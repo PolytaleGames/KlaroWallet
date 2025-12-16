@@ -420,7 +420,7 @@ const Dashboard = () => {
                         <div>
                             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">{t('future_portfolio_composition')}</h3>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {['stock', 'crypto', 'real_estate', 'cash'].map(type => {
+                                {['stock', 'crypto', 'metal', 'cash'].map(type => {
                                     const finalVal = projection.stats.finalBuckets?.[type] || 0;
                                     const initialVal = (data.assets || []).filter(a => a.type === type).reduce((sum, a) => sum + (Number(a.value) || 0), 0);
                                     const growth = finalVal - initialVal;
