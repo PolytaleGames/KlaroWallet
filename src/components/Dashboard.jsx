@@ -109,7 +109,8 @@ const Dashboard = () => {
         persistenceService.exportData(data);
     };
 
-    const [projectionMonths, setProjectionMonths] = useState(12);
+    const [duration, setDuration] = useState({ years: 1, months: 0 });
+    const projectionMonths = Math.max(1, duration.years * 12 + duration.months);
     const [projectionYield, setProjectionYield] = useState(5); // Annual Yield %
 
     const updateAssets = (newAssets) => {
@@ -304,7 +305,9 @@ const Dashboard = () => {
         if (dataMax <= 0) return 0;
         if (dataMin >= 0) return 1;
 
-        return dataMax / (dataMax - dataMin);
+        // Fix: Use a small epsilon to avoid floating point glitches near 0
+        const offset = dataMax / (dataMax - dataMin);
+        return Math.min(Math.max(offset, 0), 1);
     }, [projection.data]);
 
     const off = gradientOffset;
@@ -429,18 +432,18 @@ const Dashboard = () => {
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('wealth_projection')}</h3>
 
-                                <div className="flex bg-slate-100 dark:bg-slate-700/50 p-1 rounded-xl items-center gap-4 self-start md:self-auto">
+                                <div className="flex bg-white dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 items-center gap-4 shadow-sm">
                                     <div className="relative">
                                         <button
                                             onClick={() => setShowYields(!showYields)}
-                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 transition-colors"
+                                            className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors"
                                         >
-                                            <TrendingUp size={14} />
+                                            <TrendingUp size={14} className="text-emerald-500" />
                                             {t('config_yields')}
                                         </button>
 
                                         {showYields && (
-                                            <div className="absolute top-10 right-0 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 w-64 z-20 animate-in zoom-in-95 duration-200">
+                                            <div className="absolute top-12 left-0 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 w-64 z-20 animate-in zoom-in-95 duration-200">
                                                 <div className="flex justify-between items-center mb-3">
                                                     <h4 className="font-bold text-sm">{t('annual_yield')} (%)</h4>
                                                     <button onClick={() => setShowYields(false)}><X size={14} /></button>
@@ -475,18 +478,28 @@ const Dashboard = () => {
                                             </div>
                                         )}
                                     </div>
-                                    <div className="h-6 w-px bg-slate-200 dark:bg-slate-600" />
 
-                                    <div className="flex gap-1 overflow-x-auto">
-                                        {[{ label: '6M', value: 6 }, { label: '1Y', value: 12 }, { label: '2Y', value: 24 }, { label: '4Y', value: 48 }, { label: '10Y', value: 120 }].map(opt => (
-                                            <button
-                                                key={opt.value}
-                                                onClick={() => setProjectionMonths(opt.value)}
-                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${projectionMonths === opt.value ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
-                                            >
-                                                {opt.label}
-                                            </button>
-                                        ))}
+                                    <div className="h-5 w-px bg-slate-200 dark:bg-slate-700" />
+
+                                    <div className="flex items-center gap-3 pr-2">
+                                        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 rounded-lg px-2 py-1 border border-slate-100 dark:border-slate-800">
+                                            <input
+                                                type="number" min="0" max="50"
+                                                value={duration.years}
+                                                onChange={(e) => setDuration(prev => ({ ...prev, years: Math.max(0, parseInt(e.target.value) || 0) }))}
+                                                className="w-8 bg-transparent text-center text-sm font-bold outline-none text-slate-900 dark:text-white"
+                                            />
+                                            <span className="text-[10px] uppercase font-bold text-slate-400">{t('years')}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 rounded-lg px-2 py-1 border border-slate-100 dark:border-slate-800">
+                                            <input
+                                                type="number" min="0" max="11"
+                                                value={duration.months}
+                                                onChange={(e) => setDuration(prev => ({ ...prev, months: Math.max(0, parseInt(e.target.value) || 0) }))}
+                                                className="w-8 bg-transparent text-center text-sm font-bold outline-none text-slate-900 dark:text-white"
+                                            />
+                                            <span className="text-[10px] uppercase font-bold text-slate-400">{t('months')}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -495,12 +508,12 @@ const Dashboard = () => {
                                     <AreaChart data={projection.data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                                         <defs>
                                             <linearGradient id="splitColor" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset={off} stopColor="#10b981" stopOpacity={1} />
-                                                <stop offset={off} stopColor="#f43f5e" stopOpacity={1} />
+                                                <stop offset={off} stopColor={off <= 0 ? "#f43f5e" : "#10b981"} stopOpacity={1} />
+                                                <stop offset={off} stopColor={off >= 1 ? "#10b981" : "#f43f5e"} stopOpacity={1} />
                                             </linearGradient>
                                             <linearGradient id="splitColorFill" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset={off} stopColor="#10b981" stopOpacity={0.3} />
-                                                <stop offset={off} stopColor="#f43f5e" stopOpacity={0.3} />
+                                                <stop offset={off} stopColor={off <= 0 ? "#f43f5e" : "#10b981"} stopOpacity={0.3} />
+                                                <stop offset={off} stopColor={off >= 1 ? "#10b981" : "#f43f5e"} stopOpacity={0.3} />
                                             </linearGradient>
                                         </defs>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#334155' : '#f1f5f9'} />
