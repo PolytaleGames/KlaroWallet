@@ -98,5 +98,52 @@ export const priceService = {
             console.error(`Failed to search for ${query}:`, error);
             return [];
         }
+    },
+
+    async getHistory(ticker, range = '1mo') {
+        if (!ticker) return [];
+
+        // Yahoo Finance Interval mapping
+        const intervalMap = {
+            '1d': '5m',
+            '5d': '15m',
+            '1mo': '1d',
+            '3mo': '1d',
+            '6mo': '1d',
+            '1y': '1wk',
+            '5y': '1mo',
+            'max': '1mo'
+        };
+
+        const interval = intervalMap[range] || '1d';
+
+        try {
+            const symbol = ticker.toUpperCase();
+            // We need to use "v8/finance/chart" which supports range/interval
+            const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}`;
+            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+
+            const response = await fetch(proxyUrl);
+            if (!response.ok) throw new Error('Network response was not ok');
+
+            const data = await response.json();
+            const result = data.chart.result[0];
+
+            if (!result || !result.timestamp || !result.indicators.quote[0]) {
+                return [];
+            }
+
+            const timestamps = result.timestamp;
+            const quotes = result.indicators.quote[0];
+
+            return timestamps.map((ts, i) => ({
+                date: ts * 1000, // Convert to ms
+                price: quotes.close[i]
+            })).filter(item => item.price != null); // Filter out nulls (market closed etc)
+
+        } catch (error) {
+            console.error(`Failed to fetch history for ${ticker}:`, error);
+            return [];
+        }
     }
 };

@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
-import { Plus, Trash2, Edit2, TrendingUp, DollarSign, Wallet, Briefcase, Landmark, Coins, Home, X } from 'lucide-react';
+import { Plus, Trash2, Edit2, TrendingUp, DollarSign, Wallet, Briefcase, Landmark, Coins, Home, X, Eye } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { priceService } from '../services/priceService';
+import AssetChart from './AssetChart';
 
 function cn(...inputs) {
     return twMerge(clsx(inputs));
@@ -20,7 +21,7 @@ const ASSET_TYPES = [
     { id: 'other', translationKey: 'asset_other', icon: Briefcase, color: 'slate' },
 ];
 
-const AssetForm = ({ initialData, onSubmit, onCancel }) => {
+const AssetForm = ({ initialData, onSubmit, onCancel, onTickerSelect }) => {
     const { t } = useTranslation();
     const [formData, setFormData] = useState(initialData || {
         name: '',
@@ -104,6 +105,11 @@ const AssetForm = ({ initialData, onSubmit, onCancel }) => {
                     originalUnitPrice: data.price,
                     exchangeRate: rate
                 }));
+
+                // Notify parent to update transient variation state immediately
+                if (data.changePercent !== undefined && onTickerSelect) {
+                    onTickerSelect(data.changePercent);
+                }
             }
         } catch (e) {
             console.error("Price fetch failed", e);
@@ -346,7 +352,7 @@ const AssetForm = ({ initialData, onSubmit, onCancel }) => {
     );
 };
 
-const AssetGroup = ({ typeId, assets, activeVariations, onEdit, onRemove, totalPortfolioValue }) => {
+const AssetGroup = ({ typeId, assets, activeVariations, onEdit, onRemove, onViewChart, totalPortfolioValue }) => {
     const { t } = useTranslation();
     const type = ASSET_TYPES.find(t => t.id === typeId);
     const Icon = type.icon;
@@ -372,11 +378,11 @@ const AssetGroup = ({ typeId, assets, activeVariations, onEdit, onRemove, totalP
             </div>
 
             {/* Table Header */}
-            <div className="flex items-center justify-between px-4 py-2 bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700 text-xs font-medium text-slate-500 dark:text-slate-400">
+            <div className="flex items-center justify-between px-4 py-3 bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 <div>{t('asset_name')}</div>
                 <div className="flex items-center gap-4">
                     <div className="w-20 text-right">{t('weight')}</div>
-                    <div className="w-24 text-right">{t('value')}</div>
+                    <div className="w-[200px] text-right">{t('value')}</div>
                 </div>
             </div>
 
@@ -386,14 +392,14 @@ const AssetGroup = ({ typeId, assets, activeVariations, onEdit, onRemove, totalP
                     const assetWeight = totalPortfolioValue > 0 ? (assetValue / totalPortfolioValue) * 100 : 0;
 
                     return (
-                        <div key={asset.id} className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors group">
-                            <div className="min-w-0 pr-4">
-                                <div className="flex items-center gap-2">
-                                    <span className="font-bold text-slate-900 dark:text-white truncate">{asset.name}</span>
-                                    {asset.ticker && <span className="text-xs font-bold px-1.5 py-0.5 bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-400 rounded uppercase">{asset.ticker}</span>}
+                        <div key={asset.id} className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-200 group">
+                            <div className="min-w-0 pr-4 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-bold text-slate-900 dark:text-white truncate max-w-[200px] sm:max-w-xs text-base">{asset.name}</span>
+                                    {asset.ticker && <span className="text-[10px] font-bold px-1.5 py-0.5 bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-300 rounded uppercase tracking-wide">{asset.ticker}</span>}
                                     {activeVariations[asset.id] !== undefined && (
                                         <span className={cn(
-                                            "text-xs font-medium px-1.5 py-0.5 rounded",
+                                            "text-[10px] font-bold px-1.5 py-0.5 rounded",
                                             activeVariations[asset.id] >= 0 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
                                         )}>
                                             {activeVariations[asset.id] >= 0 ? '+' : ''}{activeVariations[asset.id].toFixed(1)}%
@@ -401,7 +407,7 @@ const AssetGroup = ({ typeId, assets, activeVariations, onEdit, onRemove, totalP
                                     )}
                                 </div>
                                 {asset.isQuantified && (
-                                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5 font-medium">
                                         {Number(asset.quantity).toLocaleString(undefined, { maximumFractionDigits: 4 })} x {Number(asset.unitPrice).toLocaleString(undefined, { maximumFractionDigits: 1 })}€
                                     </p>
                                 )}
@@ -409,20 +415,26 @@ const AssetGroup = ({ typeId, assets, activeVariations, onEdit, onRemove, totalP
 
                             <div className="flex items-center gap-4">
                                 <div className="w-20 text-right">
-                                    <span className="text-xs font-medium px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg">
+                                    <span className="text-xs font-bold px-2 py-1 bg-slate-100/50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 rounded-lg">
                                         {assetWeight.toFixed(1)}%
                                     </span>
                                 </div>
 
-                                <div className="flex items-center justify-end gap-2 w-[160px]">
-                                    <div className="text-right font-bold text-slate-700 dark:text-slate-300 flex-1">
+                                {/* Dynamic Value Container */}
+                                <div className="flex items-center justify-end gap-3 min-w-[200px] w-auto">
+                                    <div className="text-right font-bold text-slate-700 dark:text-slate-200 text-base tabular-nums tracking-tight">
                                         {assetValue.toLocaleString(undefined, { maximumFractionDigits: 1 })}€
                                     </div>
-                                    <div className="flex gap-1 w-0 overflow-hidden opacity-0 group-hover:w-auto group-hover:opacity-100 transition-all duration-300">
-                                        <button onClick={() => onEdit(asset)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors">
+                                    <div className="flex gap-1 w-0 overflow-hidden opacity-0 group-hover:w-auto group-hover:opacity-100 transition-all duration-300 ease-out translate-x-4 group-hover:translate-x-0">
+                                        {asset.ticker && (
+                                            <button onClick={() => onViewChart(asset)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-white dark:hover:bg-slate-600 shadow-sm rounded-lg transition-all" title="View Chart">
+                                                <Eye size={16} />
+                                            </button>
+                                        )}
+                                        <button onClick={() => onEdit(asset)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-white dark:hover:bg-slate-600 shadow-sm rounded-lg transition-all">
                                             <Edit2 size={16} />
                                         </button>
-                                        <button onClick={() => onRemove(asset.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors">
+                                        <button onClick={() => onRemove(asset.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-white dark:hover:bg-slate-600 shadow-sm rounded-lg transition-all">
                                             <Trash2 size={16} />
                                         </button>
                                     </div>
@@ -440,6 +452,7 @@ const AssetManager = ({ assets, onAddAsset, onRemoveAsset, onUpdateAsset }) => {
     const { t } = useTranslation();
     const [isAdding, setIsAdding] = useState(false);
     const [editingAsset, setEditingAsset] = useState(null);
+    const [viewingAsset, setViewingAsset] = useState(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [activeVariations, setActiveVariations] = useState({});
 
@@ -452,7 +465,30 @@ const AssetManager = ({ assets, onAddAsset, onRemoveAsset, onUpdateAsset }) => {
             onUpdateAsset(editingAsset.id, data);
             setEditingAsset(null);
         } else {
-            onAddAsset({ ...data, id: Date.now().toString() });
+            // We need to capture the ID here to link the variation if we just got one
+            // But ID is generated here... 
+            // Actually changePercent is NOT passed in data anymore to AssetForm submit (it's stripped or not in form data)
+            // Wait, we need to map the transient variation to the NEW ID.
+            const newId = Date.now().toString();
+
+            // If we have a pending variation from onTickerSelect, we need to associate it with this new ID
+            // Simple approach: Use a ref or just rely on the fact that if we just selected a ticker, 
+            // we can probably assume the user is adding THAT asset. 
+            // Better: Pass the variation in `data` from AssetForm specifically for this purpose, then strip it.
+
+            // Modified AssetForm submit to include changePercent?
+            // Actually, let's keep it simple. AssetForm will call onTickerSelect with the value.
+            // But we need the ID. 
+
+            // Alternative: AssetForm submits { ...assetData, changePercent }. 
+            // We extract changePercent, update activeVariations, then save rest.
+            const { changePercent, ...assetData } = data;
+
+            if (changePercent !== undefined) {
+                setActiveVariations(prev => ({ ...prev, [newId]: changePercent }));
+            }
+
+            onAddAsset({ ...assetData, id: newId });
             setIsAdding(false);
         }
     };
@@ -603,6 +639,7 @@ const AssetManager = ({ assets, onAddAsset, onRemoveAsset, onUpdateAsset }) => {
                             activeVariations={activeVariations}
                             onEdit={setEditingAsset}
                             onRemove={onRemoveAsset}
+                            onViewChart={setViewingAsset}
                             totalPortfolioValue={totalAssets}
                         />
                     ))}
@@ -623,11 +660,19 @@ const AssetManager = ({ assets, onAddAsset, onRemoveAsset, onUpdateAsset }) => {
             </div>
 
             {/* Modals */}
+            {/* Modals */}
             {(isAdding || editingAsset) && (
                 <AssetForm
                     initialData={editingAsset}
                     onSubmit={handleSave}
                     onCancel={() => { setIsAdding(false); setEditingAsset(null); }}
+                />
+            )}
+
+            {viewingAsset && (
+                <AssetChart
+                    asset={viewingAsset}
+                    onClose={() => setViewingAsset(null)}
                 />
             )}
 
