@@ -153,5 +153,7 @@
     "total_outflows": "Total Sorties",
     "budget_balance": "Flux de Trésorerie",
     "expenses_breakdown": "Dépenses",
-    "investment_breakdown": "Invest."
+    "investment_breakdown": "Invest.",
+    "annual_yield": "Rendement Annuel",
+    "projected_growth": "Croissance Projetée"
 }

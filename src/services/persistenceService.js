@@ -39,6 +39,7 @@ export const persistenceService = {
             },
             debts: Array.isArray(data?.debts) ? data.debts : [],
             events: Array.isArray(data?.events) ? data.events : [],
+            investmentGoal: data?.investmentGoal || 0,
             settings: data?.settings || { currency: 'EUR' },
             lastUpdated: data?.lastUpdated || Date.now()
         };

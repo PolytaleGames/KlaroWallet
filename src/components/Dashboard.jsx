@@ -100,6 +100,7 @@ const Dashboard = () => {
     };
 
     const [projectionMonths, setProjectionMonths] = useState(12);
+    const [projectionYield, setProjectionYield] = useState(5); // Annual Yield %
 
     const updateAssets = (newAssets) => {
         setData(prev => ({ ...prev, assets: newAssets }));
@@ -188,7 +189,11 @@ const Dashboard = () => {
 
             // Update Running Totals (starting from month 1)
             if (i > 0) {
-                runningAssets += monthlySurplus;
+                // Compound Interest on existing assets
+                const monthlyYieldRate = (projectionYield / 100) / 12;
+                const interest = runningAssets * monthlyYieldRate;
+
+                runningAssets += interest + monthlySurplus;
             }
 
             // Calculate Remaining Debt Principal at month i
@@ -199,7 +204,7 @@ const Dashboard = () => {
                 name: monthLabel,
                 Assets: Math.round(runningAssets),
                 Debt: Math.round(runningDebtPrincipal),
-                NetWorth: Math.round(runningAssets - runningDebtPrincipal)
+                NetWorth: Math.round(runningAssets - runningDebtPrincipal),
             });
         }
 
@@ -210,11 +215,18 @@ const Dashboard = () => {
                 totalAssets: currentAssets,
                 totalDebt: totalDebtPrincipal,
                 totalInterest: totalInterest,
-                monthlySurplus: monthlyIncome - monthlyExpenses - currentDebts.reduce((sum, d) => sum + d.monthlyCost, 0)
+                monthlySurplus: monthlyIncome - monthlyExpenses - currentDebts.reduce((sum, d) => sum + d.monthlyCost, 0),
+                savingsRate: monthlyIncome > 0 ? ((monthlyIncome - monthlyExpenses - currentDebts.reduce((sum, d) => sum + d.monthlyCost, 0) + (data.investmentGoal || 0)) / monthlyIncome) * 100 : 0
+                // Note: monthlySurplus ALREADY includes investmentGoal cash (it's not subtracted).
+                // Wait, logic check:
+                // Savings = Income - Expenses (Living)
+                // If InvestmentGoal is NOT in expenseCategories, then Monthly Surplus = Income - Living Expenses - Debt
+                // So Monthly Surplus IS the Savings amount (Cash Savings + Investment Savings).
+                // So Savings Rate = (Monthly Surplus / Income) * 100.
             }
         };
 
-    }, [data, isLoading, projectionMonths]);
+    }, [data, isLoading, projectionMonths, projectionYield]);
 
     // Helper for Split Gradient
     const gradientOffset = useMemo(() => {
@@ -292,25 +304,6 @@ const Dashboard = () => {
                                 <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{t('financial_overview')}</h1>
                                 <p className="text-slate-500 dark:text-slate-400 mt-1">{t('financial_overview_desc')}</p>
                             </div>
-
-                            {/* Duration Selector */}
-                            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-                                {[
-                                    { label: '6M', value: 6 },
-                                    { label: '1Y', value: 12 },
-                                    { label: '2Y', value: 24 },
-                                    { label: '4Y', value: 48 },
-                                    { label: '10Y', value: 120 }
-                                ].map(opt => (
-                                    <button
-                                        key={opt.value}
-                                        onClick={() => setProjectionMonths(opt.value)}
-                                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${projectionMonths === opt.value ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-600 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
-                                    >
-                                        {opt.label}
-                                    </button>
-                                ))}
-                            </div>
                         </header>
 
                         {/* Summary Cards */}
@@ -332,16 +325,46 @@ const Dashboard = () => {
 
                             </div>
                             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                                <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-2">{t('monthly_surplus')}</p>
+                                <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-2">{t('savings_rate')}</p>
                                 <h3 className={`text-2xl font-bold ${projection.stats.monthlySurplus >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                    {projection.stats.monthlySurplus > 0 ? '+' : ''}{Math.round(projection.stats.monthlySurplus).toLocaleString()}€
+                                    {Math.round(projection.stats.monthlySurplus > 0 && projection.stats.netWorth !== 0 ? (projection.stats.monthlySurplus / ((data.budget?.incomeCategories || []).reduce((sum, c) => sum + (Number(data.budget?.values?.[c.id]) || 0), 0) || 1)) * 100 : 0)}%
                                 </h3>
                             </div>
                         </div>
 
                         {/* Projection Chart */}
                         <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">{t('wealth_projection')}</h3>
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('wealth_projection')}</h3>
+
+                                <div className="flex bg-slate-100 dark:bg-slate-700/50 p-1 rounded-xl items-center gap-4 self-start md:self-auto">
+                                    <div className="flex items-center gap-2 px-3">
+                                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase whitespace-nowrap">{t('annual_yield')}: {projectionYield}%</span>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="20"
+                                            step="1"
+                                            value={projectionYield}
+                                            onChange={(e) => setProjectionYield(Number(e.target.value))}
+                                            className="w-24 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-600 accent-emerald-500"
+                                        />
+                                    </div>
+                                    <div className="h-6 w-px bg-slate-200 dark:bg-slate-600" />
+
+                                    <div className="flex gap-1 overflow-x-auto">
+                                        {[{ label: '6M', value: 6 }, { label: '1Y', value: 12 }, { label: '2Y', value: 24 }, { label: '4Y', value: 48 }, { label: '10Y', value: 120 }].map(opt => (
+                                            <button
+                                                key={opt.value}
+                                                onClick={() => setProjectionMonths(opt.value)}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${projectionMonths === opt.value ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
                             <div className="h-[300px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <AreaChart data={projection.data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>

@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
-import { Plus, TrendingUp, TrendingDown, PiggyBank, MoreHorizontal, GripVertical, Trash2, Lock, CreditCard, Calendar, Target } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, PiggyBank, MoreHorizontal, GripVertical, Trash2, Lock, CreditCard, Calendar, Target, Wallet } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import IconPicker, { ICON_MAP } from './IconPicker';
@@ -347,7 +347,7 @@ const Budget = ({ values, debts = [], incomeCategories, expenseCategories, inves
             </div>
 
             {/* Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
                 <div className="bg-emerald-500 text-white p-6 rounded-3xl shadow-lg shadow-emerald-500/20 relative overflow-hidden">
                     <div className="relative z-10"><p className="text-emerald-100 font-medium mb-1">{t('total_income')}</p><h3 className="text-4xl font-bold">{totalIncome.toLocaleString()}€</h3></div>
                     <TrendingUp className="absolute right-4 bottom-4 text-emerald-400/50" size={80} />
@@ -358,15 +358,19 @@ const Budget = ({ values, debts = [], incomeCategories, expenseCategories, inves
                         <h3 className={cn("text-4xl font-bold transition-colors", isDeficit ? "text-rose-500" : "text-slate-900 dark:text-white")}>
                             {totalOutflows.toLocaleString()}€
                         </h3>
-                        {investmentGoal > 0 && (
-                            <div className="flex gap-2 text-xs font-medium mt-2 text-slate-400 dark:text-slate-500">
-                                <span>{t('expenses_breakdown')}: {totalExpenses.toLocaleString()}€</span>
-                                <span>+</span>
-                                <span>{t('investment_breakdown')}: {investmentGoal.toLocaleString()}€</span>
-                            </div>
-                        )}
                     </div>
                     <TrendingDown size={80} className={cn("absolute right-4 bottom-4", isDeficit ? "text-rose-100 dark:text-rose-900/30" : "text-slate-100 dark:text-indigo-900/10")} />
+                </div>
+                <div className={cn("p-6 rounded-3xl shadow-sm border relative overflow-hidden transition-colors",
+                    isDeficit ? "bg-rose-50 border-rose-100 dark:bg-rose-900/20 dark:border-rose-800" : "bg-white border-slate-100 dark:bg-slate-800 dark:border-slate-700"
+                )}>
+                    <div className="relative z-10">
+                        <p className={cn("font-medium mb-1", isDeficit ? "text-rose-600 dark:text-rose-300" : "text-slate-500 dark:text-slate-400")}>{t('budget_balance')}</p>
+                        <h3 className={cn("text-4xl font-bold", isDeficit ? "text-rose-700 dark:text-rose-400" : "text-slate-900 dark:text-white")}>
+                            {cashFlow > 0 ? "+" : ""}{cashFlow.toLocaleString()}€
+                        </h3>
+                    </div>
+                    <Wallet className={cn("absolute right-4 bottom-4 size={80}", isDeficit ? "text-rose-200 dark:text-rose-800/30" : "text-slate-100 dark:text-slate-700/30")} />
                 </div>
                 <div className="bg-slate-900 dark:bg-indigo-600 text-white p-6 rounded-3xl shadow-lg shadow-slate-900/20 dark:shadow-indigo-900/20 relative overflow-hidden">
                     <div className="relative z-10">

@@ -153,5 +153,7 @@
     "total_outflows": "Total Outflows",
     "budget_balance": "Cash Flow",
     "expenses_breakdown": "Expenses",
-    "investment_breakdown": "Invest."
+    "investment_breakdown": "Invest.",
+    "annual_yield": "Annual Yield",
+    "projected_growth": "Projected Growth"
 }
