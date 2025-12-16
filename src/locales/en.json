@@ -137,7 +137,7 @@
     "units": "units",
     "investment_plan": "Investment Plan",
     "investment": "Investment",
-    "investment_plan_desc": "Define your monthly investment strategy and goals.",
+    "investment_plan_desc": "Define your monthly investment strategy and targets to balance your portfolio like a pro.",
     "monthly_investment_budget": "Monthly Investment Budget",
     "value_excluded_from_expenses": "This value is excluded from expenses calculation.",
     "learn_basics": "Learn the Basics",
@@ -155,5 +155,18 @@
     "expenses_breakdown": "Expenses",
     "investment_breakdown": "Invest.",
     "annual_yield": "Annual Yield",
-    "projected_growth": "Projected Growth"
+    "projected_growth": "Projected Growth",
+    "target_allocation": "Target Allocation",
+    "strategy": "Strategy",
+    "smart_dva_desc": "Prioritizes underperforming assets to return to target allocation without selling.",
+    "dca_desc": "Splits budget according to target % regardless of current portfolio balance.",
+    "monthly_action_plan": "Monthly Action Plan",
+    "based_on_strategy": "Based on Strategy",
+    "total_investment": "Total Investment",
+    "asset_class": "Asset Class",
+    "current_alloc": "Current %",
+    "target": "Target",
+    "recommended_buy": "Recommended Buy",
+    "underweight": "Underweight (Buy More)",
+    "overweight": "Overweight"
 }

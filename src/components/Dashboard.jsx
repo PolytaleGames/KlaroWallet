@@ -433,8 +433,13 @@ const Dashboard = () => {
 
                 {activeTab === 'invest' && (
                     <InvestmentPlan
+                        assets={data.assets}
                         investmentGoal={data.investmentGoal || 0}
+                        targets={data.investmentTargets || { stock: 50, crypto: 30, metal: 10, cash: 10 }}
+                        strategy={data.investmentStrategy || 'smart'}
                         onUpdateGoal={(val) => setData(prev => ({ ...prev, investmentGoal: val }))}
+                        onUpdateTargets={(val) => setData(prev => ({ ...prev, investmentTargets: val }))}
+                        onUpdateStrategy={(val) => setData(prev => ({ ...prev, investmentStrategy: val }))}
                     />
                 )}
 

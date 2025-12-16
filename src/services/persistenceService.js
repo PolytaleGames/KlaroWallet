@@ -40,6 +40,8 @@ export const persistenceService = {
             debts: Array.isArray(data?.debts) ? data.debts : [],
             events: Array.isArray(data?.events) ? data.events : [],
             investmentGoal: data?.investmentGoal || 0,
+            investmentTargets: data?.investmentTargets || { stock: 50, crypto: 30, metal: 10, cash: 10 },
+            investmentStrategy: data?.investmentStrategy || 'smart',
             settings: data?.settings || { currency: 'EUR' },
             lastUpdated: data?.lastUpdated || Date.now()
         };
@@ -150,14 +152,7 @@ export const persistenceService = {
                     }
 
                     // Ensure structure
-                    const sanitized = {
-                        assets: Array.isArray(data.assets) ? data.assets : [],
-                        budget: data.budget || {},
-                        debts: Array.isArray(data.debts) ? data.debts : [],
-                        events: Array.isArray(data.events) ? data.events : [],
-                        settings: data.settings || {},
-                        lastUpdated: Date.now()
-                    };
+                    const sanitized = this._sanitize(data);
 
                     await this.saveData(sanitized);
                     resolve(sanitized);

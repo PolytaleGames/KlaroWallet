@@ -137,7 +137,7 @@
     "units": "unités",
     "investment_plan": "Plan d'Investissement",
     "investment": "Investissement",
-    "investment_plan_desc": "Définissez votre stratégie et vos objectifs d'investissement mensuels.",
+    "investment_plan_desc": "Définissez votre stratégie et vos cibles pour équilibrer votre portefeuille comme un pro.",
     "monthly_investment_budget": "Budget d'Investissement Mensuel",
     "value_excluded_from_expenses": "Cette valeur est exclue du calcul des dépenses.",
     "learn_basics": "Apprendre les bases",
@@ -155,5 +155,18 @@
     "expenses_breakdown": "Dépenses",
     "investment_breakdown": "Invest.",
     "annual_yield": "Rendement Annuel",
-    "projected_growth": "Croissance Projetée"
+    "projected_growth": "Croissance Projetée",
+    "target_allocation": "Allocation Cible",
+    "strategy": "Stratégie",
+    "smart_dva_desc": "Privilégie les actifs sous-performants pour revenir à l'équilibre sans vendre.",
+    "dca_desc": "Répartit le budget selon les % cibles, peu importe les variations du marché.",
+    "monthly_action_plan": "Plan d'Action Mensuel",
+    "based_on_strategy": "Selon la stratégie",
+    "total_investment": "Investissement Total",
+    "asset_class": "Classe d'Actif",
+    "current_alloc": "Alloc. Actuelle",
+    "target": "Cible",
+    "recommended_buy": "Achat Recommandé",
+    "underweight": "Sous-pondéré (Acheter)",
+    "overweight": "Sur-pondéré"
 }
