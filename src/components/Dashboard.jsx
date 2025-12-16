@@ -1,4 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useTheme } from '../context/ThemeContext';
+import ThemeToggle from './ThemeToggle';
+import LanguageSwitcher from './LanguageSwitcher';
 import { LayoutDashboard, Wallet, Settings, Upload, Download, Save, CheckCircle, AlertCircle, X, PieChart, CreditCard, TrendingUp, TrendingDown, DollarSign, Calendar } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { persistenceService } from '../services/persistenceService';
@@ -9,6 +13,8 @@ import AssetManager from './AssetManager';
 import EventManager from './EventManager';
 
 const Dashboard = () => {
+    const { t } = useTranslation();
+    const { theme } = useTheme();
     const [activeTab, setActiveTab] = useState('overview');
     const [showSettings, setShowSettings] = useState(false);
 
@@ -131,6 +137,9 @@ const Dashboard = () => {
         const totalDebtPrincipal = currentDebts.reduce((sum, d) =>
             sum + calculatePrincipal(Number(d.monthlyPayment), Number(d.rate), d.remainingMonths), 0);
 
+        const totalDebtPayments = currentDebts.reduce((sum, d) => sum + (d.monthlyCost * d.remainingMonths), 0);
+        const totalInterest = totalDebtPayments - totalDebtPrincipal;
+
         // Budget Monthly Flow
         const monthlyIncome = (data.budget?.incomeCategories || []).reduce((sum, c) => sum + (Number(data.budget?.values?.[c.id]) || 0), 0);
         const monthlyExpenses = (data.budget?.expenseCategories || []).reduce((sum, c) => sum + (Number(data.budget?.values?.[c.id]) || 0), 0);
@@ -197,6 +206,7 @@ const Dashboard = () => {
                 netWorth: currentAssets - totalDebtPrincipal,
                 totalAssets: currentAssets,
                 totalDebt: totalDebtPrincipal,
+                totalInterest: totalInterest,
                 monthlySurplus: monthlyIncome - monthlyExpenses - currentDebts.reduce((sum, d) => sum + d.monthlyCost, 0)
             }
         };
@@ -219,57 +229,58 @@ const Dashboard = () => {
     const off = gradientOffset;
 
     if (isLoading) {
-        return <div className="flex items-center justify-center h-screen bg-slate-50 text-slate-400">Loading Klaro...</div>;
+        return <div className="flex items-center justify-center h-screen bg-slate-50 dark:bg-slate-900 text-slate-400">{t('loading')}</div>;
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex font-sans text-slate-900 dark:text-white">
             {/* Sidebar */}
-            <aside className="w-20 lg:w-64 bg-white border-r border-slate-200 flex flex-col fixed h-full z-20 transition-all duration-300">
+            <aside className="w-20 lg:w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col fixed h-full z-20 transition-all duration-300">
                 <div className="p-6 flex items-center justify-center lg:justify-start gap-3">
-                    <div className="w-8 h-8 bg-slate-900 rounded-xl flex items-center justify-center text-white font-bold text-lg">K</div>
-                    <span className="font-bold text-xl hidden lg:block">Klaro</span>
+                    <div className="w-8 h-8 bg-slate-900 dark:bg-indigo-500 rounded-xl flex items-center justify-center text-white font-bold text-lg">K</div>
+                    <span className="font-bold text-xl hidden lg:block dark:text-white">Klaro</span>
                 </div>
 
                 <nav className="flex-1 px-4 space-y-2 mt-6">
-                    <button onClick={() => setActiveTab('overview')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'overview' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}>
+                    <button onClick={() => setActiveTab('overview')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'overview' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}>
                         <LayoutDashboard size={20} />
-                        <span className="font-medium hidden lg:block">Overview</span>
+                        <span className="font-medium hidden lg:block">{t('overview')}</span>
                     </button>
-                    <button onClick={() => setActiveTab('budget')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'budget' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}>
+                    <button onClick={() => setActiveTab('budget')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'budget' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}>
                         <PieChart size={20} />
-                        <span className="font-medium hidden lg:block">Budget</span>
+                        <span className="font-medium hidden lg:block">{t('budget')}</span>
                     </button>
-                    <button onClick={() => setActiveTab('planning')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'planning' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}>
+                    <button onClick={() => setActiveTab('planning')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'planning' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}>
                         <Calendar size={20} />
-                        <span className="font-medium hidden lg:block">Planning</span>
+                        <span className="font-medium hidden lg:block">{t('planning')}</span>
                     </button>
-                    <button onClick={() => setActiveTab('assets')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'assets' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}>
+                    <button onClick={() => setActiveTab('assets')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'assets' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}>
                         <Wallet size={20} />
-                        <span className="font-medium hidden lg:block">Assets</span>
+                        <span className="font-medium hidden lg:block">{t('assets')}</span>
                     </button>
-                    <button onClick={() => setActiveTab('debts')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'debts' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}>
+                    <button onClick={() => setActiveTab('debts')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'debts' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}>
                         <CreditCard size={20} />
-                        <span className="font-medium hidden lg:block">Debts</span>
+                        <span className="font-medium hidden lg:block">{t('debts')}</span>
                     </button>
                 </nav>
 
-                <div className="p-4 border-t border-slate-100">
-                    <button onClick={() => setShowSettings(true)} className="w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all">
+                <div className="p-4 border-t border-slate-100 dark:border-slate-700 space-y-2">
+
+                    <button onClick={() => setShowSettings(true)} className="w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white transition-all">
                         <Settings size={20} />
-                        <span className="font-medium hidden lg:block">Settings</span>
+                        <span className="font-medium hidden lg:block">{t('settings')}</span>
                     </button>
                 </div>
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 ml-20 lg:ml-64 p-8 transition-all duration-300">
-                {/* Header with Save Status */}
-                <div className="flex justify-end mb-4">
-                    <div className={`flex items-center gap-2 text-sm font-medium transition-opacity duration-500 ${saveStatus === 'idle' ? 'opacity-0' : 'opacity-100'}`}>
-                        {saveStatus === 'saving' && <span className="text-slate-400 flex items-center gap-1"><Save size={14} className="animate-pulse" /> Saving...</span>}
-                        {saveStatus === 'saved' && <span className="text-emerald-500 flex items-center gap-1"><CheckCircle size={14} /> Saved</span>}
-                        {saveStatus === 'error' && <span className="text-rose-500 flex items-center gap-1"><AlertCircle size={14} /> Save Failed</span>}
+            <main className="flex-1 ml-20 lg:ml-64 p-8 transition-all duration-300 relative">
+                {/* Header with Save Status - Overlay */}
+                <div className="absolute top-4 right-8 z-10 pointer-events-none">
+                    <div className={`flex items-center gap-2 text-sm font-medium transition-opacity duration-500 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm border border-slate-100 dark:border-slate-700 ${saveStatus === 'idle' ? 'opacity-0' : 'opacity-100'}`}>
+                        {saveStatus === 'saving' && <span className="text-slate-400 flex items-center gap-1"><Save size={14} className="animate-pulse" /> {t('saving')}</span>}
+                        {saveStatus === 'saved' && <span className="text-emerald-500 flex items-center gap-1"><CheckCircle size={14} /> {t('saved')}</span>}
+                        {saveStatus === 'error' && <span className="text-rose-500 flex items-center gap-1"><AlertCircle size={14} /> {t('save_failed')}</span>}
                     </div>
                 </div>
 
@@ -277,12 +288,12 @@ const Dashboard = () => {
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
                         <header className="flex justify-between items-end">
                             <div>
-                                <h1 className="text-3xl font-bold text-slate-900">Financial Overview</h1>
-                                <p className="text-slate-500 mt-1">Your wealth projection based on current budget and assets.</p>
+                                <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{t('financial_overview')}</h1>
+                                <p className="text-slate-500 dark:text-slate-400 mt-1">{t('financial_overview_desc')}</p>
                             </div>
 
                             {/* Duration Selector */}
-                            <div className="flex bg-slate-100 p-1 rounded-xl">
+                            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
                                 {[
                                     { label: '6M', value: 6 },
                                     { label: '1Y', value: 12 },
@@ -293,7 +304,7 @@ const Dashboard = () => {
                                     <button
                                         key={opt.value}
                                         onClick={() => setProjectionMonths(opt.value)}
-                                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${projectionMonths === opt.value ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${projectionMonths === opt.value ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-600 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
                                     >
                                         {opt.label}
                                     </button>
@@ -303,23 +314,28 @@ const Dashboard = () => {
 
                         {/* Summary Cards */}
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                            <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
-                                <p className="text-slate-400 text-sm font-medium mb-2">Net Worth</p>
+                            <div className="bg-slate-900 dark:bg-indigo-600 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
+                                <p className="text-slate-400 dark:text-indigo-200 text-sm font-medium mb-2">{t('net_worth')}</p>
                                 <h3 className="text-3xl font-bold">{Math.round(projection.stats.netWorth).toLocaleString()}€</h3>
                                 <div className="absolute right-0 bottom-0 opacity-10 transform translate-y-1/4 translate-x-1/4">
                                     <TrendingUp size={100} />
                                 </div>
                             </div>
-                            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                                <p className="text-slate-500 text-sm font-medium mb-2">Total Assets</p>
-                                <h3 className="text-2xl font-bold text-slate-900">{Math.round(projection.stats.totalAssets).toLocaleString()}€</h3>
+                            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                                <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-2">{t('total_assets')}</p>
+                                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{Math.round(projection.stats.totalAssets).toLocaleString()}€</h3>
                             </div>
-                            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                                <p className="text-slate-500 text-sm font-medium mb-2">Total Debt</p>
-                                <h3 className="text-2xl font-bold text-slate-900">{Math.round(projection.stats.totalDebt).toLocaleString()}€</h3>
+                            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                                <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-2">{t('total_debt')}</p>
+                                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{Math.round(projection.stats.totalDebt).toLocaleString()}€</h3>
+                                {projection.stats.totalInterest > 0 && (
+                                    <p className="text-xs text-rose-500 mt-1 font-medium">
+                                        {t('including_interest', { amount: Math.round(projection.stats.totalInterest).toLocaleString() })}
+                                    </p>
+                                )}
                             </div>
-                            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                                <p className="text-slate-500 text-sm font-medium mb-2">Monthly Surplus</p>
+                            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                                <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-2">{t('monthly_surplus')}</p>
                                 <h3 className={`text-2xl font-bold ${projection.stats.monthlySurplus >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                                     {projection.stats.monthlySurplus > 0 ? '+' : ''}{Math.round(projection.stats.monthlySurplus).toLocaleString()}€
                                 </h3>
@@ -327,8 +343,8 @@ const Dashboard = () => {
                         </div>
 
                         {/* Projection Chart */}
-                        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-                            <h3 className="text-lg font-bold text-slate-900 mb-6">Wealth Projection</h3>
+                        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">{t('wealth_projection')}</h3>
                             <div className="h-[300px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <AreaChart data={projection.data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
@@ -342,30 +358,30 @@ const Dashboard = () => {
                                                 <stop offset={off} stopColor="#f43f5e" stopOpacity={0.3} />
                                             </linearGradient>
                                         </defs>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#334155' : '#f1f5f9'} />
                                         <XAxis
                                             dataKey="name"
                                             axisLine={false}
                                             tickLine={false}
-                                            tick={{ fill: '#64748b', fontSize: 12 }}
+                                            tick={{ fill: theme === 'dark' ? '#94a3b8' : '#64748b', fontSize: 12 }}
                                             dy={10}
                                             minTickGap={50}
                                         />
                                         <YAxis
                                             axisLine={false}
                                             tickLine={false}
-                                            tick={{ fill: '#64748b', fontSize: 12 }}
+                                            tick={{ fill: theme === 'dark' ? '#94a3b8' : '#64748b', fontSize: 12 }}
                                             tickFormatter={(value) => `${value / 1000}k`}
                                         />
                                         <Tooltip
-                                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', backgroundColor: theme === 'dark' ? '#1e293b' : '#fff', color: theme === 'dark' ? '#fff' : '#000' }}
                                             formatter={(value, name) => [
                                                 <span className={name === 'NetWorth' ? (value >= 0 ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold') : ''}>
                                                     {value.toLocaleString()}€
                                                 </span>,
-                                                name === 'NetWorth' ? 'Net Worth' : name
+                                                name === 'NetWorth' ? t('net_worth') : name
                                             ]}
-                                            labelStyle={{ color: '#64748b', marginBottom: '0.5rem' }}
+                                            labelStyle={{ color: theme === 'dark' ? '#94a3b8' : '#64748b', marginBottom: '0.5rem' }}
                                         />
                                         <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="3 3" />
                                         <Area
@@ -482,23 +498,33 @@ const Dashboard = () => {
             {/* Settings Modal */}
             {showSettings && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in">
-                    <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md p-6 m-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-md p-6 m-4">
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-bold text-slate-900">Settings</h3>
-                            <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-slate-600"><X size={24} /></button>
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white">{t('settings')}</h3>
+                            <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"><X size={24} /></button>
                         </div>
 
                         <div className="space-y-4">
-                            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                                <h4 className="font-bold text-slate-900 mb-2">Data Management</h4>
-                                <p className="text-sm text-slate-500 mb-4">Export your data to keep a safe backup, or import data from another device.</p>
+                            <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-100 dark:border-slate-600 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <span className="font-bold text-slate-900 dark:text-white">{t('theme')}</span>
+                                    <ThemeToggle />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="font-bold text-slate-900 dark:text-white">{t('language')}</span>
+                                    <LanguageSwitcher />
+                                </div>
+                            </div>
+                            <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-100 dark:border-slate-600">
+                                <h4 className="font-bold text-slate-900 dark:text-white mb-2">{t('data_management')}</h4>
+                                <p className="text-sm text-slate-500 dark:text-slate-300 mb-4">{t('data_management_desc')}</p>
 
                                 <div className="flex gap-3">
-                                    <button onClick={handleExport} className="flex-1 flex items-center justify-center gap-2 py-2 bg-white border border-slate-200 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors">
-                                        <Download size={18} /> Export
+                                    <button onClick={handleExport} className="flex-1 flex items-center justify-center gap-2 py-2 bg-white dark:bg-slate-600 border border-slate-200 dark:border-slate-500 rounded-lg text-slate-700 dark:text-white font-medium hover:bg-slate-50 dark:hover:bg-slate-500 transition-colors">
+                                        <Download size={18} /> {t('export')}
                                     </button>
-                                    <label className="flex-1 flex items-center justify-center gap-2 py-2 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors cursor-pointer">
-                                        <Upload size={18} /> Import
+                                    <label className="flex-1 flex items-center justify-center gap-2 py-2 bg-slate-900 dark:bg-indigo-600 text-white rounded-lg font-medium hover:bg-slate-800 dark:hover:bg-indigo-700 transition-colors cursor-pointer">
+                                        <Upload size={18} /> {t('import')}
                                         <input type="file" accept=".json" onChange={handleImport} className="hidden" />
                                     </label>
                                 </div>
