@@ -48,6 +48,7 @@
     "monthly": "Monthly",
     "loan_payment": "Loan Payment",
     "insurance_abbr": "Ins.",
+    "future_net_worth": "Future Net Worth",
     "future_portfolio_composition": "Future Portfolio Composition",
     "latent_gain": "Latent Gain",
     "in_months": "in {{count}}mo",

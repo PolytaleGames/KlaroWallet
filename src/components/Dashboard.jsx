@@ -419,7 +419,21 @@ const Dashboard = () => {
                         {/* Final Projection Breakdown Section */}
                         <div>
                             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">{t('future_portfolio_composition')}</h3>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                                {/* Future Net Worth Card - NEW */}
+                                <div className="bg-slate-900 dark:bg-indigo-600 text-white p-4 rounded-2xl shadow-lg flex flex-col justify-between transform scale-[1.02] ring-2 ring-emerald-500/50">
+                                    <div>
+                                        <p className="text-xs font-bold text-slate-400 dark:text-indigo-200 uppercase mb-1">{t('future_net_worth')}</p>
+                                        <p className="text-lg font-bold">{Math.round(projection.stats.finalBuckets?.NetWorth || 0).toLocaleString()}€</p>
+                                    </div>
+                                    <div className="flex items-center gap-1 mt-2 text-xs">
+                                        <span className="font-bold text-emerald-400">
+                                            +{Math.round((projection.stats.finalBuckets?.NetWorth || 0) - (projection.stats.netWorth || 0)).toLocaleString()}€
+                                        </span>
+                                        <span className="text-slate-400 dark:text-indigo-300">{t('in_months', { count: projectionMonths })}</span>
+                                    </div>
+                                </div>
+
                                 {['stock', 'crypto', 'metal', 'cash'].map(type => {
                                     const finalVal = projection.stats.finalBuckets?.[type] || 0;
                                     const initialVal = (data.assets || []).filter(a => a.type === type).reduce((sum, a) => sum + (Number(a.value) || 0), 0);
