@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
-import { Plus, Trash2, Edit2, TrendingUp, DollarSign, Wallet, Briefcase, Landmark, Coins, Home, X, Eye, Search } from 'lucide-react';
+import { Plus, Trash2, Edit2, TrendingUp, Euro, Wallet, Briefcase, Landmark, Coins, Home, X, Eye, Search } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { priceService } from '../services/priceService';
@@ -188,8 +188,8 @@ const AssetForm = ({ initialData, onSubmit, onCancel, onTickerSelect }) => {
                                         className={cn(
                                             "flex flex-col items-center justify-center p-3 rounded-xl border transition-all",
                                             isSelected
-                                                ? `bg-${type.color}-50 dark:bg-${type.color}-900/20 border-${type.color}-500 text-${type.color}-700 dark:text-${type.color}-300 ring-1 ring-${type.color}-500`
-                                                : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"
+                                                ? "bg-slate-900 text-white border-slate-900 dark:bg-indigo-600 dark:border-indigo-600 dark:text-white shadow-md transform scale-[1.02]"
+                                                : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
                                         )}
                                     >
                                         <Icon size={20} className="mb-1" />
@@ -445,10 +445,10 @@ const AssetGroup = ({ typeId, assets, activeVariations, onEdit, onRemove, onView
 
             {/* Table Headers - Subtle & Spaced */}
             <div className="hidden md:grid grid-cols-12 gap-6 px-8 py-3 bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-50 dark:border-slate-700/50 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500">
-                <div className="col-span-5 pl-2">{t('asset_name')}</div>
+                <div className="col-span-4 pl-2">{t('asset_name')}</div>
                 <div className="col-span-3 text-right">{t('price')}</div>
                 <div className="col-span-2 text-right">{t('performance')}</div>
-                <div className="col-span-2 text-right">{t('value')}</div>
+                <div className="col-span-3 text-right">{t('value')}</div>
             </div>
 
             {/* Asset List */}
@@ -463,7 +463,7 @@ const AssetGroup = ({ typeId, assets, activeVariations, onEdit, onRemove, onView
                             {/* Desktop Layout - Fluid & Clean */}
                             <div className="hidden md:grid grid-cols-12 gap-6 items-center">
                                 {/* 1. Asset Info (Col 5) */}
-                                <div className="col-span-5 flex items-center gap-4 min-w-0">
+                                <div className="col-span-4 flex items-center gap-4 min-w-0">
                                     <div className="min-w-0 flex flex-col justify-center">
                                         <div className="flex items-center gap-2">
                                             <h5 className="font-bold text-slate-900 dark:text-white truncate text-base">{asset.name}</h5>
@@ -527,7 +527,7 @@ const AssetGroup = ({ typeId, assets, activeVariations, onEdit, onRemove, onView
                                 </div>
 
                                 {/* 4. Value / Actions (Col 2) */}
-                                <div className="col-span-2 relative h-12 flex items-center justify-end">
+                                <div className="col-span-3 relative h-12 flex items-center justify-end">
                                     {/* Default View: Value */}
                                     <div className="absolute right-0 top-1/2 -translate-y-1/2 transition-all duration-200 group-hover:opacity-0 group-hover:translate-x-4">
                                         <div className="text-lg font-bold text-slate-900 dark:text-white tabular-nums tracking-tight text-right">
@@ -705,7 +705,7 @@ const AssetManager = ({ assets, onAddAsset, onRemoveAsset, onUpdateAsset }) => {
     })).filter(group => group.items.length > 0);
 
     return (
-        <div className="space-y-8 max-w-5xl mx-auto animate-in fade-in">
+        <div className="space-y-8 max-w-7xl mx-auto animate-in fade-in">
 
             {/* Summary Header */}
             <div className="bg-slate-900 dark:bg-indigo-600 text-white p-8 rounded-3xl shadow-xl relative overflow-hidden">

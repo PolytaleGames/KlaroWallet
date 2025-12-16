@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
-import { Plus, Trash2, Edit2, TrendingDown, Calendar, Percent, DollarSign, Shield, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { Plus, Trash2, Edit2, TrendingDown, Calendar, Percent, Euro, Shield, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { calculateMonthsRemaining, calculatePrincipal, generateAmortizationSchedule } from '../utils/financeUtils';
@@ -31,15 +31,21 @@ const AmortizationTable = ({ schedule }) => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                        {schedule.map((row) => (
-                            <tr key={row.month} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50">
-                                <td className="p-3 text-slate-500 dark:text-slate-400">{row.month}</td>
-                                <td className="p-3 font-medium dark:text-white">{row.payment.toFixed(2)}€</td>
-                                <td className="p-3 text-rose-500 dark:text-rose-400">{row.interest.toFixed(2)}€</td>
-                                <td className="p-3 text-emerald-600 dark:text-emerald-400">{row.principal.toFixed(2)}€</td>
-                                <td className="p-3 text-slate-700 dark:text-slate-300">{Math.max(0, row.balance).toFixed(2)}€</td>
-                            </tr>
-                        ))}
+                        {schedule.map((row) => {
+                            const date = new Date();
+                            date.setMonth(date.getMonth() + row.month - 1);
+                            const dateStr = date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+                            return (
+                                <tr key={row.month} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50">
+                                    <td className="p-3 text-slate-500 dark:text-slate-400 first-letter:uppercase">{dateStr}</td>
+                                    <td className="p-3 font-medium dark:text-white">{row.payment.toFixed(2)}€</td>
+                                    <td className="p-3 text-rose-500 dark:text-rose-400">{row.interest.toFixed(2)}€</td>
+                                    <td className="p-3 text-emerald-600 dark:text-emerald-400">{row.principal.toFixed(2)}€</td>
+                                    <td className="p-3 text-slate-700 dark:text-slate-300">{Math.max(0, row.balance).toFixed(2)}€</td>
+                                </tr>
+                            )
+                        })}
                     </tbody>
                 </table>
             </div>
@@ -195,7 +201,7 @@ const DebtForm = ({ initialData, onSubmit, onCancel }) => {
                         <div>
                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('monthly_payment')}</label>
                             <div className="relative">
-                                <DollarSign size={16} className="absolute left-3 top-3 text-slate-400" />
+                                <Euro size={16} className="absolute left-3 top-3 text-slate-400" />
                                 <input
                                     name="monthlyPayment"
                                     type="number"
@@ -287,7 +293,7 @@ const DebtManager = ({ debts, onAddDebt, onRemoveDebt, onUpdateDebt }) => {
                         )}
                     </div>
                     <div className="absolute right-0 bottom-0 opacity-10 transform translate-y-1/4 translate-x-1/4">
-                        <DollarSign size={200} />
+                        <Euro size={200} />
                     </div>
                 </div>
 
