@@ -129,5 +129,10 @@
     "add_asset": "Ajouter un actif",
     "weight": "Poids",
     "value": "Valeur",
-    "allocation": "Répartition"
+    "cost_price": "Prix de revient",
+    "total_capital_gain": "Plus/Moins-Value Latente",
+    "allocation": "Répartition",
+    "performance": "Performance",
+    "price": "Prix",
+    "units": "unités"
 }

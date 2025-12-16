@@ -1,12 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
-import { Plus, Trash2, Edit2, TrendingUp, DollarSign, Wallet, Briefcase, Landmark, Coins, Home, X, Eye } from 'lucide-react';
+import { Plus, Trash2, Edit2, TrendingUp, DollarSign, Wallet, Briefcase, Landmark, Coins, Home, X, Eye, Search } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { priceService } from '../services/priceService';
 import AssetChart from './AssetChart';
+
+const calculatePerformance = (asset) => {
+    if (!asset.isQuantified || !asset.costPrice || Number(asset.costPrice) === 0) return null;
+
+    const quantity = Number(asset.quantity) || 0;
+    const currentPrice = Number(asset.unitPrice) || 0;
+    const costPrice = Number(asset.costPrice) || 0;
+
+    // Total Value = Qty * Current
+    // Total Cost = Qty * Cost
+    const totalCurrentValue = quantity * currentPrice;
+    const totalCost = quantity * costPrice;
+
+    const diff = totalCurrentValue - totalCost;
+    const percent = totalCost !== 0 ? (diff / totalCost) * 100 : 0;
+
+    return { diff, percent };
+};
 
 function cn(...inputs) {
     return twMerge(clsx(inputs));
@@ -26,14 +44,14 @@ const AssetForm = ({ initialData, onSubmit, onCancel, onTickerSelect }) => {
     const [formData, setFormData] = useState(initialData || {
         name: '',
         ticker: '',
-        type: 'cash',
+        type: 'stock',
         isQuantified: false,
         quantity: '',
         unitPrice: '',
         totalValue: '',
-        originalCurrency: 'EUR',
-        originalUnitPrice: null,
-        exchangeRate: 1
+        costPrice: '',
+        currency: 'EUR',
+        originalCurrency: 'EUR'
     });
 
     const [searchQuery, setSearchQuery] = useState(initialData?.ticker || '');
@@ -41,6 +59,8 @@ const AssetForm = ({ initialData, onSubmit, onCancel, onTickerSelect }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [showResults, setShowResults] = useState(false);
     const [isFetchingPrice, setIsFetchingPrice] = useState(false);
+
+    const ignoreSearchRef = useRef(false);
 
     // Debounce search
     useEffect(() => {
@@ -73,6 +93,7 @@ const AssetForm = ({ initialData, onSubmit, onCancel, onTickerSelect }) => {
     };
 
     const handleSelectAsset = async (asset) => {
+        ignoreSearchRef.current = true;
         setShowResults(false);
         setSearchQuery(asset.symbol);
 
@@ -81,7 +102,7 @@ const AssetForm = ({ initialData, onSubmit, onCancel, onTickerSelect }) => {
             ...prev,
             name: asset.name,
             ticker: asset.symbol,
-            type: asset.type === 'CRYPTOCURRENCY' ? 'crypto' : 'stock', // Simple mapping
+            type: asset.type === 'CRYPTOCURRENCY' ? 'crypto' : 'stock',
             isQuantified: true
         }));
 
@@ -103,13 +124,9 @@ const AssetForm = ({ initialData, onSubmit, onCancel, onTickerSelect }) => {
                     unitPrice: finalPrice,
                     originalCurrency: data.currency,
                     originalUnitPrice: data.price,
-                    exchangeRate: rate
+                    exchangeRate: rate,
+                    changePercent: data.changePercent // Store this to pass it on save
                 }));
-
-                // Notify parent to update transient variation state immediately
-                if (data.changePercent !== undefined && onTickerSelect) {
-                    onTickerSelect(data.changePercent);
-                }
             }
         } catch (e) {
             console.error("Price fetch failed", e);
@@ -144,45 +161,20 @@ const AssetForm = ({ initialData, onSubmit, onCancel, onTickerSelect }) => {
 
                 <form onSubmit={handleSubmit} className="space-y-6">
 
-                    {/* Search / Ticker Input - ONLY FOR NEW ASSETS */}
-                    {!initialData && (
-                        <div className="relative z-20">
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('search_asset')}</label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-3 text-slate-400">🔍</span>
-                                <input
-                                    value={searchQuery}
-                                    onChange={(e) => { setSearchQuery(e.target.value); setShowResults(true); }}
-                                    placeholder="e.g. Total, Bitcoin, Apple"
-                                    className="w-full pl-10 px-4 py-2 border rounded-xl focus:ring-2 focus:ring-slate-900 dark:focus:ring-indigo-500 focus:outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white"
-                                    autoFocus
-                                />
-                                {isSearching && <span className="absolute right-3 top-3 text-slate-400 animate-spin">↻</span>}
-                            </div>
+                    {/* 1. Name Input - Moved to TOP */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('asset_name')}</label>
+                        <input
+                            name="name"
+                            value={formData.name}
+                            onChange={handleChange}
+                            placeholder="e.g. Livret A, Bitcoin..."
+                            className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-slate-900 dark:focus:ring-indigo-500 focus:outline-none dark:text-white transition-all shadow-sm font-medium"
+                            required
+                        />
+                    </div>
 
-                            {/* Search Results Dropdown */}
-                            {showResults && searchResults.length > 0 && (
-                                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl max-h-60 overflow-y-auto divide-y divide-slate-50 dark:divide-slate-700">
-                                    {searchResults.map((result) => (
-                                        <button
-                                            key={result.symbol}
-                                            type="button"
-                                            onClick={() => handleSelectAsset(result)}
-                                            className="w-full p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex justify-between items-center group"
-                                        >
-                                            <div>
-                                                <p className="font-bold text-slate-900 dark:text-white">{result.symbol}</p>
-                                                <p className="text-sm text-slate-500 dark:text-slate-400 truncate max-w-[200px]">{result.name}</p>
-                                            </div>
-                                            <span className="text-xs font-medium px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded group-hover:bg-white dark:group-hover:bg-slate-600">{result.exchange}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Type Selection - ONLY FOR NEW ASSETS */}
+                    {/* 2. Type Selection - Under Name */}
                     {!initialData && (
                         <div className="grid grid-cols-3 gap-2">
                             {ASSET_TYPES.map(type => {
@@ -208,36 +200,63 @@ const AssetForm = ({ initialData, onSubmit, onCancel, onTickerSelect }) => {
                         </div>
                     )}
 
-                    {/* Name & Ticker - ONLY FOR NEW ASSETS */}
+                    {/* 3. Search & Ticker - Side by Side */}
                     {!initialData && (
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="col-span-2 md:col-span-1">
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('asset_name')}</label>
-                                <input
-                                    name="name"
-                                    value={formData.name}
-                                    onChange={handleChange}
-                                    placeholder="e.g. Livret A"
-                                    className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-slate-900 dark:focus:ring-indigo-500 focus:outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white"
-                                    required
-                                />
-                            </div>
-                            <div className="col-span-2 md:col-span-1">
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('ticker_optional')}</label>
-                                <div className="relative">
+                            {/* Search */}
+                            <div className="relative z-20">
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('search_asset')}</label>
+                                <div className="relative group">
+                                    <div className="absolute left-3 top-2.5 text-slate-400 group-focus-within:text-indigo-500 transition-colors">
+                                        <Search size={18} />
+                                    </div>
                                     <input
-                                        name="ticker"
-                                        value={formData.ticker}
-                                        onChange={handleChange}
-                                        placeholder="e.g. TTE.PA, BTC-USD"
-                                        className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-slate-900 dark:focus:ring-indigo-500 focus:outline-none uppercase dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                                        value={searchQuery}
+                                        onChange={(e) => {
+                                            setSearchQuery(e.target.value);
+                                            if (ignoreSearchRef.current) ignoreSearchRef.current = false;
+                                        }}
+                                        placeholder="Apple, BTC..."
+                                        className="w-full pl-10 px-4 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-slate-900 dark:focus:ring-indigo-500 focus:outline-none dark:text-white transition-all shadow-sm"
                                     />
+                                    {isFetchingPrice && <span className="absolute right-3 top-2.5 text-slate-400 animate-spin">↻</span>}
                                 </div>
+                                {/* Search Results */}
+                                {showResults && searchResults.length > 0 && !ignoreSearchRef.current && (
+                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-2xl max-h-60 overflow-y-auto divide-y divide-slate-50 dark:divide-slate-700 z-50 animate-in fade-in slide-in-from-top-2">
+                                        {searchResults.map((result) => (
+                                            <button
+                                                key={result.symbol}
+                                                type="button"
+                                                onClick={() => handleSelectAsset(result)}
+                                                className="w-full p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex justify-between items-center group"
+                                            >
+                                                <div className="min-w-0 pr-2">
+                                                    <p className="font-bold text-slate-900 dark:text-white truncate text-sm">{result.symbol}</p>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{result.name}</p>
+                                                </div>
+                                                <span className="text-[10px] font-bold px-2 py-1 bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-300 rounded group-hover:bg-white dark:group-hover:bg-slate-500 transition-colors whitespace-nowrap">{result.exchange}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Ticker Input */}
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('ticker_optional')}</label>
+                                <input
+                                    name="ticker"
+                                    value={formData.ticker}
+                                    onChange={handleChange}
+                                    placeholder="AAPL"
+                                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-slate-900 dark:focus:ring-indigo-500 focus:outline-none uppercase dark:text-white transition-all shadow-sm font-medium"
+                                />
                             </div>
                         </div>
                     )}
 
-                    {/* Quantified Toggle - ONLY FOR NEW ASSETS */}
+                    {/* Quantified Toggle */}
                     {!initialData && (
                         <div className="flex items-center gap-2">
                             <input
@@ -266,6 +285,7 @@ const AssetForm = ({ initialData, onSubmit, onCancel, onTickerSelect }) => {
                         </div>
                     )}
 
+                    {/* Values Section */}
                     {formData.isQuantified ? (
                         <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2">
                             <div className="col-span-2">
@@ -277,13 +297,13 @@ const AssetForm = ({ initialData, onSubmit, onCancel, onTickerSelect }) => {
                                     value={formData.quantity}
                                     onChange={handleChange}
                                     placeholder="10"
-                                    className="w-full px-4 py-3 text-lg font-bold border rounded-xl focus:ring-2 focus:ring-slate-900 dark:focus:ring-indigo-500 focus:outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                                    className="w-full px-4 py-3 text-lg font-bold bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-slate-900 dark:focus:ring-indigo-500 focus:outline-none dark:text-white transition-all shadow-sm"
                                     required
                                     autoFocus={!!initialData}
                                 />
                             </div>
 
-                            {/* Unit Price - Read Only in Edit Mode usually, but let's keep it visible/editable if no ticker */}
+                            {/* Unit Price */}
                             <div className="relative col-span-2 md:col-span-1">
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('unit_price')}</label>
                                 <input
@@ -295,14 +315,31 @@ const AssetForm = ({ initialData, onSubmit, onCancel, onTickerSelect }) => {
                                     placeholder="60.50"
                                     readOnly={!!formData.ticker}
                                     className={cn(
-                                        "w-full px-4 py-3 text-lg font-bold border rounded-xl focus:ring-2 focus:ring-slate-900 dark:focus:ring-indigo-500 focus:outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white",
-                                        formData.ticker ? "bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-400 cursor-not-allowed" : ""
+                                        "w-full px-4 py-3 text-lg font-bold border rounded-xl focus:ring-2 focus:ring-slate-900 dark:focus:ring-indigo-500 focus:outline-none transition-all shadow-sm",
+                                        formData.ticker
+                                            ? "bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-400 cursor-not-allowed border-transparent"
+                                            : "bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 dark:text-white"
                                     )}
                                     required
                                 />
                                 {isFetchingPrice && <span className="absolute right-3 top-9 text-slate-400 animate-spin">↻</span>}
                             </div>
 
+                            {/* Cost Price - NEW */}
+                            <div className="col-span-2 md:col-span-1">
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('cost_price')}</label>
+                                <input
+                                    name="costPrice"
+                                    type="number"
+                                    step="any"
+                                    value={formData.costPrice}
+                                    onChange={handleChange}
+                                    placeholder="Optional"
+                                    className="w-full px-4 py-3 text-lg font-bold bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-slate-900 dark:focus:ring-indigo-500 focus:outline-none dark:text-white transition-all shadow-sm"
+                                />
+                            </div>
+
+                            {/* Conversion Info */}
                             {formData.originalCurrency && formData.originalCurrency !== 'EUR' && (
                                 <div className="col-span-2 text-xs text-slate-500 dark:text-slate-400 bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg border border-blue-100 dark:border-blue-800">
                                     {t('converted_from')} {Number(formData.originalUnitPrice).toFixed(2)} {formData.originalCurrency}
@@ -310,7 +347,8 @@ const AssetForm = ({ initialData, onSubmit, onCancel, onTickerSelect }) => {
                                 </div>
                             )}
 
-                            <div className="col-span-2 md:col-span-1 bg-slate-50 dark:bg-slate-700 p-3 rounded-xl flex flex-col justify-center">
+                            {/* Total Calculated */}
+                            <div className="col-span-2 bg-slate-50 dark:bg-slate-700 p-3 rounded-xl flex items-center justify-between">
                                 <span className="text-sm text-slate-500 dark:text-slate-400">{t('calculated_total')}</span>
                                 <span className="font-bold text-slate-900 dark:text-white text-lg">
                                     {((Number(formData.quantity) || 0) * (Number(formData.unitPrice) || 0)).toLocaleString(undefined, { maximumFractionDigits: 1 })}€
@@ -318,31 +356,31 @@ const AssetForm = ({ initialData, onSubmit, onCancel, onTickerSelect }) => {
                             </div>
                         </div>
                     ) : (
-                        <div className="animate-in slide-in-from-top-2">
+                        <div>
                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('total_value')}</label>
                             <div className="relative">
-                                <DollarSign size={16} className="absolute left-3 top-4 text-slate-400" />
                                 <input
                                     name="totalValue"
                                     type="number"
                                     step="any"
                                     value={formData.totalValue}
                                     onChange={handleChange}
-                                    placeholder="5000"
-                                    className="w-full pl-10 px-4 py-3 text-lg font-bold border rounded-xl focus:ring-2 focus:ring-slate-900 dark:focus:ring-indigo-500 focus:outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                                    placeholder="1000"
+                                    className="w-full px-4 py-3 text-lg font-bold border rounded-xl focus:ring-2 focus:ring-slate-900 dark:focus:ring-indigo-500 focus:outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white"
                                     required
-                                    autoFocus={!!initialData}
+                                    autoFocus
                                 />
+                                <span className="absolute right-4 top-4 text-slate-400 font-bold">€</span>
                             </div>
                         </div>
                     )}
 
-                    <div className="pt-4 flex gap-3">
-                        <button type="submit" className="flex-1 bg-slate-900 dark:bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-slate-800 dark:hover:bg-indigo-700 transition-colors">
+                    <div className="pt-2">
+                        <button
+                            type="submit"
+                            className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-white font-bold py-4 rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-[0.98]"
+                        >
                             {initialData ? t('save_changes') : t('add_asset')}
-                        </button>
-                        <button type="button" onClick={onCancel} className="flex-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 py-3 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
-                            {t('cancel')}
                         </button>
                     </div>
                 </form>
@@ -359,83 +397,191 @@ const AssetGroup = ({ typeId, assets, activeVariations, onEdit, onRemove, onView
     const categoryValue = assets.reduce((sum, asset) => sum + (Number(asset.value) || 0), 0);
     const categoryWeight = totalPortfolioValue > 0 ? (categoryValue / totalPortfolioValue) * 100 : 0;
 
+    // Calculate Group Performance
+    const groupPerformance = assets.reduce((acc, asset) => {
+        const perf = calculatePerformance(asset);
+        if (perf) {
+            acc.totalDiff += perf.diff;
+            acc.hasData = true;
+        }
+        return acc;
+    }, { totalDiff: 0, hasData: false });
+
     return (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden mb-6">
-            <div className={`p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-${type.color}-50/50 dark:bg-${type.color}-900/10`}>
-                <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-xl bg-${type.color}-100 dark:bg-${type.color}-900/30 text-${type.color}-600 dark:text-${type.color}-400`}>
-                        <Icon size={20} />
+        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden mb-8 animate-in fade-in slide-in-from-bottom-4">
+            {/* Category Header - Minimalist */}
+            <div className={`px-8 py-5 flex items-center justify-between bg-white dark:bg-slate-800 border-b border-slate-50 dark:border-slate-700/50`}>
+                <div className="flex items-center gap-4">
+                    <div className={cn(
+                        "w-12 h-12 rounded-2xl flex items-center justify-center transition-transform hover:scale-105",
+                        `bg-${type.color}-50 text-${type.color}-600 dark:bg-${type.color}-900/20 dark:text-${type.color}-400`
+                    )}>
+                        <Icon size={22} strokeWidth={1.5} />
                     </div>
                     <div>
-                        <h3 className="font-bold text-slate-900 dark:text-white">{t(type.translationKey)}</h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">{assets.length} {assets.length > 1 ? t('assets') : t('asset')}</p>
+                        <h4 className="font-bold text-xl text-slate-900 dark:text-white tracking-tight leading-tight">{t(type.translationKey)}</h4>
+                        <p className="text-sm font-medium text-slate-400 dark:text-slate-500">{assets.length} {assets.length > 1 ? t('assets') : t('asset')}</p>
                     </div>
                 </div>
                 <div className="text-right">
-                    <p className="font-bold text-slate-900 dark:text-white">{categoryValue.toLocaleString(undefined, { maximumFractionDigits: 1 })}€</p>
-                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{categoryWeight.toFixed(1)}%</p>
+                    <div className="font-bold text-2xl text-slate-900 dark:text-white tabular-nums tracking-tight">{categoryValue.toLocaleString(undefined, { maximumFractionDigits: 1 })}€</div>
+                    <div className="flex items-center justify-end gap-2 text-xs mt-1">
+                        {groupPerformance.hasData && (
+                            <span className={cn(
+                                "font-bold tabular-nums px-2.5 py-1 rounded-full text-[11px]",
+                                groupPerformance.totalDiff >= 0
+                                    ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+                                    : "bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400"
+                            )}>
+                                {groupPerformance.totalDiff > 0 ? "+" : ""}{groupPerformance.totalDiff.toLocaleString(undefined, { maximumFractionDigits: 1 })}€
+                            </span>
+                        )}
+                        <span className="font-medium text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-md border border-slate-100 dark:border-slate-700">
+                            {categoryWeight.toFixed(1)}%
+                        </span>
+                    </div>
                 </div>
             </div>
 
-            {/* Table Header */}
-            <div className="flex items-center justify-between px-4 py-3 bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                <div>{t('asset_name')}</div>
-                <div className="flex items-center gap-4">
-                    <div className="w-20 text-right">{t('weight')}</div>
-                    <div className="w-[200px] text-right">{t('value')}</div>
-                </div>
+            {/* Table Headers - Subtle & Spaced */}
+            <div className="hidden md:grid grid-cols-12 gap-6 px-8 py-3 bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-50 dark:border-slate-700/50 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500">
+                <div className="col-span-5 pl-2">{t('asset_name')}</div>
+                <div className="col-span-3 text-right">{t('price')}</div>
+                <div className="col-span-2 text-right">{t('performance')}</div>
+                <div className="col-span-2 text-right">{t('value')}</div>
             </div>
 
-            <div className="divide-y divide-slate-50 dark:divide-slate-700">
+            {/* Asset List */}
+            <div className="divide-y divide-slate-50 dark:divide-slate-700/30">
                 {assets.map(asset => {
                     const assetValue = Number(asset.value) || 0;
                     const assetWeight = totalPortfolioValue > 0 ? (assetValue / totalPortfolioValue) * 100 : 0;
+                    const performance = calculatePerformance(asset);
 
                     return (
-                        <div key={asset.id} className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-200 group">
-                            <div className="min-w-0 pr-4 flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="font-bold text-slate-900 dark:text-white truncate max-w-[200px] sm:max-w-xs text-base">{asset.name}</span>
-                                    {asset.ticker && <span className="text-[10px] font-bold px-1.5 py-0.5 bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-300 rounded uppercase tracking-wide">{asset.ticker}</span>}
-                                    {activeVariations[asset.id] !== undefined && (
-                                        <span className={cn(
-                                            "text-[10px] font-bold px-1.5 py-0.5 rounded",
-                                            activeVariations[asset.id] >= 0 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
-                                        )}>
-                                            {activeVariations[asset.id] >= 0 ? '+' : ''}{activeVariations[asset.id].toFixed(1)}%
-                                        </span>
+                        <div key={asset.id} className="group relative p-6 md:px-8 md:py-5 transition-all duration-200 hover:bg-slate-50/80 dark:hover:bg-slate-700/20">
+                            {/* Desktop Layout - Fluid & Clean */}
+                            <div className="hidden md:grid grid-cols-12 gap-6 items-center">
+                                {/* 1. Asset Info (Col 5) */}
+                                <div className="col-span-5 flex items-center gap-4 min-w-0">
+                                    <div className="min-w-0 flex flex-col justify-center">
+                                        <div className="flex items-center gap-2">
+                                            <h5 className="font-bold text-slate-900 dark:text-white truncate text-base">{asset.name}</h5>
+                                            {asset.ticker && (
+                                                <span className="text-[10px] font-bold px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-md uppercase tracking-wider shrink-0 border border-slate-200 dark:border-slate-600">
+                                                    {asset.ticker}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {/* Daily Variation Display */}
+                                        <div className="flex items-center gap-2 mt-0.5 min-h-[1.25rem]">
+                                            {activeVariations[asset.id] !== undefined ? (
+                                                <span className={cn(
+                                                    "text-xs font-bold tabular-nums flex items-center gap-1",
+                                                    activeVariations[asset.id] >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                                                )}>
+                                                    {activeVariations[asset.id] > 0 ? "↑" : "↓"} {Math.abs(activeVariations[asset.id]).toFixed(2)}% <span className="text-slate-300 dark:text-slate-600 font-normal">24h</span>
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs text-slate-400 dark:text-slate-600">-</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 2. Price / Quantity (Col 3) */}
+                                <div className="col-span-3 text-right flex flex-col items-end justify-center">
+                                    {asset.isQuantified ? (
+                                        <>
+                                            <div className="text-base font-semibold text-slate-700 dark:text-slate-300 tabular-nums">
+                                                {Number(asset.unitPrice).toLocaleString(undefined, { maximumFractionDigits: 2 })}€
+                                            </div>
+                                            <div className="text-xs text-slate-400 dark:text-slate-500 tabular-nums font-medium mt-0.5">
+                                                {Number(asset.quantity).toLocaleString(undefined, { maximumFractionDigits: 4 })} {t('units')}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="h-1 w-4 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
                                     )}
                                 </div>
-                                {asset.isQuantified && (
-                                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5 font-medium">
-                                        {Number(asset.quantity).toLocaleString(undefined, { maximumFractionDigits: 4 })} x {Number(asset.unitPrice).toLocaleString(undefined, { maximumFractionDigits: 1 })}€
-                                    </p>
-                                )}
-                            </div>
 
-                            <div className="flex items-center gap-4">
-                                <div className="w-20 text-right">
-                                    <span className="text-xs font-bold px-2 py-1 bg-slate-100/50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 rounded-lg">
-                                        {assetWeight.toFixed(1)}%
-                                    </span>
+                                {/* 3. Performance (Col 2) - PILLS */}
+                                <div className="col-span-2 flex justify-end">
+                                    {performance ? (
+                                        <div className={cn(
+                                            "flex flex-col items-end px-3 py-1.5 rounded-xl border transition-colors",
+                                            performance.diff >= 0
+                                                ? "bg-emerald-50/50 border-emerald-100 text-emerald-700 dark:bg-emerald-900/10 dark:border-emerald-500/20 dark:text-emerald-400"
+                                                : "bg-rose-50/50 border-rose-100 text-rose-700 dark:bg-rose-900/10 dark:border-rose-500/20 dark:text-rose-400"
+                                        )}>
+                                            <div className="text-xs font-bold tabular-nums">
+                                                {performance.diff > 0 ? "+" : ""}{performance.diff.toLocaleString(undefined, { maximumFractionDigits: 0 })}€
+                                            </div>
+                                            <div className="text-[10px] font-bold opacity-80 tabular-nums">
+                                                {performance.percent > 0 ? "+" : ""}{performance.percent.toFixed(1)}%
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="h-1 w-4 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+                                    )}
                                 </div>
 
-                                {/* Dynamic Value Container */}
-                                <div className="flex items-center justify-end gap-3 min-w-[200px] w-auto">
-                                    <div className="text-right font-bold text-slate-700 dark:text-slate-200 text-base tabular-nums tracking-tight">
-                                        {assetValue.toLocaleString(undefined, { maximumFractionDigits: 1 })}€
+                                {/* 4. Value / Actions (Col 2) */}
+                                <div className="col-span-2 relative h-12 flex items-center justify-end">
+                                    {/* Default View: Value */}
+                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 transition-all duration-200 group-hover:opacity-0 group-hover:translate-x-4">
+                                        <div className="text-lg font-bold text-slate-900 dark:text-white tabular-nums tracking-tight text-right">
+                                            {assetValue.toLocaleString(undefined, { maximumFractionDigits: 1 })}€
+                                        </div>
+                                        <div className="text-xs font-medium text-slate-400 dark:text-slate-500 tabular-nums text-right">
+                                            {assetWeight.toFixed(1)}%
+                                        </div>
                                     </div>
-                                    <div className="flex gap-1 w-0 overflow-hidden opacity-0 group-hover:w-auto group-hover:opacity-100 transition-all duration-300 ease-out translate-x-4 group-hover:translate-x-0">
+
+                                    {/* Hover View: Actions */}
+                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 ease-out z-10">
                                         {asset.ticker && (
-                                            <button onClick={() => onViewChart(asset)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-white dark:hover:bg-slate-600 shadow-sm rounded-lg transition-all" title="View Chart">
-                                                <Eye size={16} />
+                                            <button onClick={() => onViewChart(asset)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-600/50 border border-transparent hover:border-indigo-100 dark:hover:border-slate-500 rounded-lg transition-all transform hover:scale-105" title="View Chart">
+                                                <Eye size={18} />
                                             </button>
                                         )}
-                                        <button onClick={() => onEdit(asset)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-white dark:hover:bg-slate-600 shadow-sm rounded-lg transition-all">
-                                            <Edit2 size={16} />
+                                        <button onClick={() => onEdit(asset)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-600/50 border border-transparent hover:border-indigo-100 dark:hover:border-slate-500 rounded-lg transition-all transform hover:scale-105">
+                                            <Edit2 size={18} />
                                         </button>
-                                        <button onClick={() => onRemove(asset.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-white dark:hover:bg-slate-600 shadow-sm rounded-lg transition-all">
-                                            <Trash2 size={16} />
+                                        <button onClick={() => onRemove(asset.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-slate-600/50 border border-transparent hover:border-red-100 dark:hover:border-slate-500 rounded-lg transition-all transform hover:scale-105">
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Mobile Layout (Card Style) */}
+                            <div className="flex md:hidden items-center justify-between">
+                                <div className="flex-1 min-w-0 pr-4">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <h5 className="font-bold text-slate-900 dark:text-white truncate text-base">{asset.name}</h5>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                                        {asset.ticker && <span className="text-[10px] font-bold px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded uppercase">{asset.ticker}</span>}
+                                        {performance ? (
+                                            <span className={cn(
+                                                "font-bold text-[10px] px-1.5 py-0.5 rounded",
+                                                performance.diff >= 0 ? "bg-emerald-100/50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400" : "bg-rose-100/50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400"
+                                            )}>
+                                                {performance.diff > 0 ? "+" : ""}{performance.percent.toFixed(1)}%
+                                            </span>
+                                        ) : (
+                                            <span className="text-xs">{Number(asset.quantity || 0).toLocaleString()} {t('units')}</span>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-base font-bold text-slate-900 dark:text-white">
+                                        {assetValue.toLocaleString(undefined, { maximumFractionDigits: 1 })}€
+                                    </div>
+                                    <div className="flex justify-end gap-2 mt-2">
+                                        <button onClick={() => onEdit(asset)} className="p-1.5 text-slate-400 bg-slate-50 rounded-lg">
+                                            <Edit2 size={14} />
                                         </button>
                                     </div>
                                 </div>
@@ -465,23 +611,9 @@ const AssetManager = ({ assets, onAddAsset, onRemoveAsset, onUpdateAsset }) => {
             onUpdateAsset(editingAsset.id, data);
             setEditingAsset(null);
         } else {
-            // We need to capture the ID here to link the variation if we just got one
-            // But ID is generated here... 
-            // Actually changePercent is NOT passed in data anymore to AssetForm submit (it's stripped or not in form data)
-            // Wait, we need to map the transient variation to the NEW ID.
             const newId = Date.now().toString();
 
-            // If we have a pending variation from onTickerSelect, we need to associate it with this new ID
-            // Simple approach: Use a ref or just rely on the fact that if we just selected a ticker, 
-            // we can probably assume the user is adding THAT asset. 
-            // Better: Pass the variation in `data` from AssetForm specifically for this purpose, then strip it.
-
-            // Modified AssetForm submit to include changePercent?
-            // Actually, let's keep it simple. AssetForm will call onTickerSelect with the value.
-            // But we need the ID. 
-
-            // Alternative: AssetForm submits { ...assetData, changePercent }. 
-            // We extract changePercent, update activeVariations, then save rest.
+            // Extract and use the changePercent we captured during asset selection
             const { changePercent, ...assetData } = data;
 
             if (changePercent !== undefined) {
@@ -541,6 +673,31 @@ const AssetManager = ({ assets, onAddAsset, onRemoveAsset, onUpdateAsset }) => {
 
     const totalAssets = (assets || []).reduce((sum, a) => sum + (Number(a.value) || 0), 0);
 
+    // Calculate Global Performance across ALL assets
+    // User wants "Total Wealth" variation, so assets without P&L (like Cash) are treated as Cost = Value (0% variation)
+    const globalPerformance = (assets || []).reduce((acc, asset) => {
+        const perf = calculatePerformance(asset);
+
+        if (perf) {
+            // Asset with variation (Stocks, Crypto...)
+            acc.totalDiff += perf.diff;
+            acc.totalCost += (Number(asset.quantity) * Number(asset.costPrice));
+        } else {
+            // Asset without variation (Cash, etc.) -> Cost is Current Value
+            // This ensures the % is calculated against the TOTAL wealth
+            acc.totalCost += (Number(asset.value) || 0);
+        }
+
+        // We consider we have data if at least ONE asset generates a diff
+        if (perf) acc.hasData = true;
+
+        return acc;
+    }, { totalDiff: 0, totalCost: 0, hasData: false });
+
+    const globalPercent = globalPerformance.totalCost > 0
+        ? (globalPerformance.totalDiff / globalPerformance.totalCost) * 100
+        : 0;
+
     // Group assets by type
     const groupedAssets = ASSET_TYPES.map(type => ({
         typeId: type.id,
@@ -552,12 +709,28 @@ const AssetManager = ({ assets, onAddAsset, onRemoveAsset, onUpdateAsset }) => {
 
             {/* Summary Header */}
             <div className="bg-slate-900 dark:bg-indigo-600 text-white p-8 rounded-3xl shadow-xl relative overflow-hidden">
-                <div className="relative z-10">
-                    <p className="text-slate-400 dark:text-indigo-200 font-medium mb-2">{t('total_assets')}</p>
-                    <h2 className="text-5xl font-bold mb-4">{totalAssets.toLocaleString(undefined, { maximumFractionDigits: 1 })}€</h2>
-                    <div className="flex items-center gap-2 text-slate-300 dark:text-indigo-100">
-                        <TrendingUp size={20} />
-                        <span>{t('your_wealth')}</span>
+                <div className="relative z-10 flex justify-between items-end">
+                    <div>
+                        <p className="text-slate-400 dark:text-indigo-200 font-medium mb-2">{t('total_assets')}</p>
+                        <h2 className="text-5xl font-bold mb-4 tabular-nums">{totalAssets.toLocaleString(undefined, { maximumFractionDigits: 1 })}€</h2>
+                        <div className="flex items-center gap-6">
+                            <div className="flex items-center gap-2 text-slate-300 dark:text-indigo-100">
+                                <TrendingUp size={20} />
+                                <span>{t('your_wealth')}</span>
+                            </div>
+                            {globalPerformance.hasData && (
+                                <div className="flex items-center gap-2">
+                                    <span className={cn(
+                                        "px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1",
+                                        globalPerformance.totalDiff >= 0 ? "bg-emerald-500/20 text-emerald-300" : "bg-rose-500/20 text-rose-300"
+                                    )}>
+                                        {globalPerformance.totalDiff > 0 ? "+" : ""}{globalPerformance.totalDiff.toLocaleString(undefined, { maximumFractionDigits: 1 })}€
+                                        <span className="opacity-70 mx-1">|</span>
+                                        {globalPerformance.totalDiff > 0 ? "+" : ""}{globalPercent.toFixed(1)}%
+                                    </span>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
                 <div className="absolute right-0 bottom-0 opacity-10 transform translate-y-1/4 translate-x-1/4">

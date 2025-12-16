@@ -129,5 +129,10 @@
     "add_asset": "Add Asset",
     "weight": "Weight",
     "value": "Value",
-    "allocation": "Allocation"
+    "cost_price": "Cost Price",
+    "total_capital_gain": "Total Capital Gain",
+    "allocation": "Allocation",
+    "performance": "Performance",
+    "price": "Price",
+    "units": "units"
 }
