@@ -59,6 +59,7 @@ const AssetForm = ({ initialData, onSubmit, onCancel, onTickerSelect }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [showResults, setShowResults] = useState(false);
     const [isFetchingPrice, setIsFetchingPrice] = useState(false);
+    const [costCurrency, setCostCurrency] = useState('EUR'); // New local state for input currency
 
     const ignoreSearchRef = useRef(false);
 
@@ -134,7 +135,35 @@ const AssetForm = ({ initialData, onSubmit, onCancel, onTickerSelect }) => {
         setIsFetchingPrice(false);
     };
 
-    const handleSubmit = (e) => {
+    const handleCurrencySwitch = async (newCurrency) => {
+        // If there's a value, convert it live
+        if (formData.costPrice && formData.costPrice !== '') {
+            try {
+                // If switching TO EUR (from USD) -> Convert USD to EUR
+                if (newCurrency === 'EUR' && costCurrency === 'USD') {
+                    // Get USD -> EUR rate (e.g. 0.90)
+                    const rate = await priceService.getExchangeRate('USD', 'EUR');
+                    const newVal = (Number(formData.costPrice) * rate).toFixed(2);
+                    setFormData(prev => ({ ...prev, costPrice: newVal }));
+                }
+                // If switching TO USD (from EUR) -> Convert EUR to USD
+                else if (newCurrency === 'USD' && costCurrency === 'EUR') {
+                    // Get EUR -> USD rate (Inverse of USD -> EUR, or fetch direct)
+                    // priceService usually provides USD->EUR. So 1 EUR = 1 / Rate USD
+                    const rateToEur = await priceService.getExchangeRate('USD', 'EUR');
+                    if (rateToEur > 0) {
+                        const newVal = (Number(formData.costPrice) / rateToEur).toFixed(2);
+                        setFormData(prev => ({ ...prev, costPrice: newVal }));
+                    }
+                }
+            } catch (e) {
+                console.error("Conversion failed", e);
+            }
+        }
+        setCostCurrency(newCurrency);
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
         let finalValue = 0;
         if (formData.isQuantified) {
@@ -143,8 +172,21 @@ const AssetForm = ({ initialData, onSubmit, onCancel, onTickerSelect }) => {
             finalValue = Number(formData.totalValue) || 0;
         }
 
+        // Handle Cost Price Conversion (if user entered in USD)
+        let finalCostPrice = formData.costPrice;
+        if (formData.costPrice && costCurrency !== 'EUR') {
+            try {
+                // Fetch rate only if needed
+                const rate = await priceService.getExchangeRate(costCurrency, 'EUR');
+                finalCostPrice = (Number(formData.costPrice) * rate).toFixed(2);
+            } catch (err) {
+                console.error("Failed to convert cost price", err);
+            }
+        }
+
         onSubmit({
             ...formData,
+            costPrice: finalCostPrice, // Use the converted (or original) EUR value
             value: finalValue
         });
     };
@@ -202,9 +244,9 @@ const AssetForm = ({ initialData, onSubmit, onCancel, onTickerSelect }) => {
 
                     {/* 3. Search & Ticker - Side by Side */}
                     {!initialData && (
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-3 gap-4">
                             {/* Search */}
-                            <div className="relative z-20">
+                            <div className="relative z-20 col-span-2">
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('search_asset')}</label>
                                 <div className="relative group">
                                     <div className="absolute left-3 top-2.5 text-slate-400 group-focus-within:text-indigo-500 transition-colors">
@@ -327,16 +369,41 @@ const AssetForm = ({ initialData, onSubmit, onCancel, onTickerSelect }) => {
 
                             {/* Cost Price - NEW */}
                             <div className="col-span-2 md:col-span-1">
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('cost_price')}</label>
-                                <input
-                                    name="costPrice"
-                                    type="number"
-                                    step="any"
-                                    value={formData.costPrice}
-                                    onChange={handleChange}
-                                    placeholder="Optional"
-                                    className="w-full px-4 py-3 text-lg font-bold bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-slate-900 dark:focus:ring-indigo-500 focus:outline-none dark:text-white transition-all shadow-sm"
-                                />
+                                <div className="flex justify-between items-center mb-1">
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('cost_price')}</label>
+                                    {/* Currency Toggle */}
+                                    <div className="flex bg-slate-100 dark:bg-slate-700/50 rounded-lg p-0.5">
+                                        {['EUR', 'USD'].map(curr => (
+                                            <button
+                                                key={curr}
+                                                type="button"
+                                                onClick={() => handleCurrencySwitch(curr)}
+                                                className={cn(
+                                                    "px-2 py-0.5 text-[10px] font-bold rounded-md transition-all",
+                                                    costCurrency === curr
+                                                        ? "bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm"
+                                                        : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                                                )}
+                                            >
+                                                {curr}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="relative">
+                                    <input
+                                        name="costPrice"
+                                        type="number"
+                                        step="any"
+                                        value={formData.costPrice}
+                                        onChange={handleChange}
+                                        placeholder="Optional"
+                                        className="w-full pl-4 pr-12 py-3 text-lg font-bold bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-slate-900 dark:focus:ring-indigo-500 focus:outline-none dark:text-white transition-all shadow-sm"
+                                    />
+                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">
+                                        {costCurrency}
+                                    </span>
+                                </div>
                             </div>
 
                             {/* Conversion Info */}
@@ -518,7 +585,7 @@ const AssetGroup = ({ typeId, assets, activeVariations, onEdit, onRemove, onView
                                                 {performance.diff > 0 ? "+" : ""}{performance.diff.toLocaleString(undefined, { maximumFractionDigits: 0 })}€
                                             </div>
                                             <div className="text-[10px] font-bold opacity-80 tabular-nums">
-                                                {performance.percent > 0 ? "+" : ""}{performance.percent.toFixed(1)}%
+                                                {performance.percent > 0 ? "+" : ""}{performance.percent.toFixed(2)}%
                                             </div>
                                         </div>
                                     ) : (
@@ -534,7 +601,7 @@ const AssetGroup = ({ typeId, assets, activeVariations, onEdit, onRemove, onView
                                             {assetValue.toLocaleString(undefined, { maximumFractionDigits: 1 })}€
                                         </div>
                                         <div className="text-xs font-medium text-slate-400 dark:text-slate-500 tabular-nums text-right">
-                                            {assetWeight.toFixed(1)}%
+                                            {assetWeight.toFixed(2)}%
                                         </div>
                                     </div>
 
@@ -568,7 +635,7 @@ const AssetGroup = ({ typeId, assets, activeVariations, onEdit, onRemove, onView
                                                 "font-bold text-[10px] px-1.5 py-0.5 rounded",
                                                 performance.diff >= 0 ? "bg-emerald-100/50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400" : "bg-rose-100/50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400"
                                             )}>
-                                                {performance.diff > 0 ? "+" : ""}{performance.percent.toFixed(1)}%
+                                                {performance.diff > 0 ? "+" : ""}{performance.percent.toFixed(2)}%
                                             </span>
                                         ) : (
                                             <span className="text-xs">{Number(asset.quantity || 0).toLocaleString()} {t('units')}</span>

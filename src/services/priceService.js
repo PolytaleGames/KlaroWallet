@@ -90,7 +90,7 @@ export const priceService = {
                 .filter(q => q.quoteType === 'EQUITY' || q.quoteType === 'ETF' || q.quoteType === 'CRYPTOCURRENCY' || q.quoteType === 'FUTURE')
                 .map(q => ({
                     symbol: q.symbol,
-                    name: q.shortname || q.longname || q.symbol,
+                    name: q.longname || q.shortname || q.symbol,
                     type: q.quoteType,
                     exchange: q.exchange
                 }));

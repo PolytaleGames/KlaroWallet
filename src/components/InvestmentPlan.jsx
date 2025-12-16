@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TrendingUp, Target, PieChart, ShieldCheck, RefreshCw, ArrowRight, Coins, Wallet, Landmark, Home, Briefcase, Lock, AlertCircle, ArrowDownRight, Zap } from 'lucide-react';
+import { TrendingUp, Target, PieChart, ShieldCheck, RefreshCw, ArrowRight, Coins, Wallet, Landmark, Home, Briefcase, Lock, AlertCircle, ArrowDownRight, Zap, ChevronDown } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -123,40 +123,37 @@ const InvestmentPlan = ({ assets = [], investmentGoal, onUpdateGoal, targets, on
                         // Sort by Performance Ascending  (Worst first)
                         assetsWithPerf.sort((a, b) => a.perf - b.perf);
 
-                        // Pro Strategy: Conviction Weighted (Allocation * Quadratic Gap)
-                        // 1. Find Max Performance (Leader)
+                        // Pro Strategy: "Smart Accumulation" (Hybrid: Core + Opportunity)
+                        // Goal: Buy the dip BUT keep feeding the winners/core.
+                        // 1. Find Max Performance (Leader) to establish the baseline gap
                         const maxPerf = Math.max(...assetsWithPerf.map(a => a.perf));
 
-                        // 2. Calculate Weight: Prioritize LARGE positions that are LAGGING.
-                        // Score = (Current Allocation %) * (Distance from Leader)^2
-                        let totalWeight = 0;
-                        const assetsWithWeight = assetsWithPerf.map(a => {
-                            const delta = maxPerf - a.perf;
-                            // Get current allocation share (0 to 1) for this specific asset within its class
-                            // (We need to calculate it relative to the class total value)
+                        let totalScore = 0;
+                        const assetsWithScore = assetsWithPerf.map(a => {
+                            const delta = maxPerf - a.perf; // Gap from leader (larger gap = better buy opportunity)
+
+                            // Get current allocation share (0 to 1) within the class
                             const assetValue = Number(a.totalValue) || (Number(a.quantity) * Number(a.unitPrice)) || 0;
-                            // Helper: class total value was calculated above but not passed down cleanly, let's recalc sum of class
                             const classTotalVal = assetsWithPerf.reduce((sum, item) => sum + (Number(item.totalValue) || (Number(item.quantity) * Number(item.unitPrice)) || 0), 0);
+                            // HYBRID FORMULA v3: "Pure Gap + Safety"
+                            // User Request: Remove the 30% equal split. Everything is Gap-driven.
+                            // BUT: we still add a tiny +0.1 base so the Leader (Delta=0) isn't strictly excluded (0€).
 
-                            const allocShare = classTotalVal > 0 ? assetValue / classTotalVal : 0;
+                            const score = delta + 0.1;
 
-                            // Weight Formula: Conviction (AllocShare) * Linear Gap (Delta)
-                            // We switched from Quadratic (Delta^2) to Linear because quadratic was too aggressive on deep drops (falling knives).
-                            // Linear ensures we buy more of what we have deeply, but not exponentially more.
-                            const weight = allocShare * delta;
-                            totalWeight += weight;
-                            return { ...a, weight };
+                            totalScore += score;
+                            return { ...a, score };
                         });
 
                         // 3. Distribute Amount
-                        if (totalWeight > 0) {
-                            subItems = assetsWithWeight
+                        if (totalScore > 0) {
+                            subItems = assetsWithScore
                                 .map(a => ({
                                     name: a.name || a.ticker || 'Asset',
-                                    amount: amount * (a.weight / totalWeight),
+                                    amount: amount * (a.score / totalScore),
                                     perf: a.perf
                                 }))
-                                .filter(item => item.amount >= 1)
+                                .filter(item => item.amount >= 1) // Filter out negligible amounts
                                 .sort((a, b) => b.amount - a.amount);
                         } else {
                             // Fallback: If no weights (e.g. new portfolio), split equally
@@ -278,26 +275,6 @@ const InvestmentPlan = ({ assets = [], investmentGoal, onUpdateGoal, targets, on
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white px-2">{t('strategy')}</h3>
 
                     <button
-                        onClick={() => onUpdateStrategy('smart')}
-                        className={cn("w-full text-left p-4 rounded-2xl border transition-all relative overflow-hidden group",
-                            strategy === 'smart'
-                                ? "bg-slate-900 dark:bg-indigo-600 text-white border-transparent shadow-lg ring-2 ring-emerald-500 ring-offset-2 ring-offset-slate-50 dark:ring-offset-slate-900"
-                                : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
-                        )}
-                    >
-                        <div className="flex justify-between items-start mb-2">
-                            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
-                                <RefreshCw size={20} />
-                            </div>
-                            {strategy === 'smart' && <div className="px-2 py-0.5 bg-emerald-500 text-white text-[10px] uppercase font-bold rounded">{t('active')}</div>}
-                        </div>
-                        <h4 className="font-bold text-lg mb-1">{t('smart_rebalancing')}</h4>
-                        <p className={cn("text-xs leading-relaxed", strategy === 'smart' ? "text-slate-300 dark:text-indigo-100" : "text-slate-400 dark:text-slate-500")}>
-                            {t('smart_dva_desc') || "Prioritizes underperforming assets to return to target allocation without selling."}
-                        </p>
-                    </button>
-
-                    <button
                         onClick={() => onUpdateStrategy('dca')}
                         className={cn("w-full text-left p-4 rounded-2xl border transition-all relative overflow-hidden group",
                             strategy === 'dca'
@@ -413,25 +390,31 @@ const InvestmentPlan = ({ assets = [], investmentGoal, onUpdateGoal, targets, on
                                                         )}
                                                     </div>
 
-                                                    {/* Active Selection Granularity */}
+                                                    {/* Active Selection Granularity - Collapsible */}
                                                     {strategy === 'active' && item.subItems && item.subItems.length > 0 && (
-                                                        <div className="mt-3 flex flex-wrap justify-end gap-2">
-                                                            {item.subItems.map((sub, idx) => (
-                                                                <div key={idx} className={cn("bg-white dark:bg-slate-900 border shadow-sm pl-2 pr-3 py-1.5 rounded-lg flex items-center gap-2 group transition-colors",
-                                                                    sub.perf < -0.3 ? "border-rose-200 dark:border-rose-900/50" : "border-emerald-100 dark:border-emerald-900/30 hover:border-emerald-300 dark:hover:border-emerald-700"
-                                                                )}>
-                                                                    {sub.perf < -0.3 ? (
-                                                                        <div className="text-rose-500" title={t('warning_falling_knife')}>
-                                                                            <AlertCircle size={10} />
-                                                                        </div>
-                                                                    ) : (
-                                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                                                                    )}
-                                                                    <span className="font-semibold text-slate-700 dark:text-slate-200 text-xs">{sub.name}</span>
-                                                                    <span className={cn("font-bold text-sm", sub.perf < -0.3 ? "text-rose-500" : "text-emerald-600 dark:text-emerald-400")}>+{Math.round(sub.amount).toLocaleString()}€</span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
+                                                        <details className="mt-2 group">
+                                                            <summary className="flex items-center justify-end gap-1.5 text-xs font-medium text-slate-400 hover:text-indigo-500 cursor-pointer list-none select-none transition-colors py-1">
+                                                                <span>{t('view_details')}</span>
+                                                                <ChevronDown size={14} className="transition-transform duration-200 group-open:rotate-180" />
+                                                            </summary>
+                                                            <div className="mt-2 flex flex-wrap justify-end gap-2 animate-in slide-in-from-top-1 fade-in duration-200">
+                                                                {item.subItems.map((sub, idx) => (
+                                                                    <div key={idx} className={cn("bg-white dark:bg-slate-900 border shadow-sm pl-2 pr-3 py-1.5 rounded-lg flex items-center gap-2 group transition-colors",
+                                                                        sub.perf < -0.3 ? "border-rose-200 dark:border-rose-900/50" : "border-emerald-100 dark:border-emerald-900/30 hover:border-emerald-300 dark:hover:border-emerald-700"
+                                                                    )}>
+                                                                        {sub.perf < -0.3 ? (
+                                                                            <div className="text-rose-500" title={t('warning_falling_knife')}>
+                                                                                <AlertCircle size={10} />
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                                                                        )}
+                                                                        <span className="font-semibold text-slate-700 dark:text-slate-200 text-xs">{sub.name}</span>
+                                                                        <span className={cn("font-bold text-sm", sub.perf < -0.3 ? "text-rose-500" : "text-emerald-600 dark:text-emerald-400")}>+{Math.round(sub.amount).toLocaleString()}€</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </details>
                                                     )}
                                                 </td>
                                             </tr>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
@@ -26,6 +26,23 @@ const Dashboard = () => {
     const [activeTab, setActiveTab] = useState('overview');
     const [showSettings, setShowSettings] = useState(false);
 
+    // Config Popup State
+    const [showYields, setShowYields] = useState(false);
+    const yieldPopupRef = useRef(null);
+
+    // Click Outside Handler for Yield Popup
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (yieldPopupRef.current && !yieldPopupRef.current.contains(event.target)) {
+                setShowYields(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
     // Unified State
     const [data, setData] = useState({
         assets: [],
@@ -46,7 +63,7 @@ const Dashboard = () => {
         investmentGoal: 0,
         settings: { currency: 'EUR' },
         investmentTargets: { stock: 50, crypto: 30, metal: 10, cash: 10 },
-        investmentStrategy: 'smart',
+        investmentStrategy: 'active',
         assetYields: { stock: 7, crypto: 5, real_estate: 3, metal: 2, cash: 0, other: 0 }
     });
 
@@ -293,7 +310,6 @@ const Dashboard = () => {
 
     }, [data, isLoading, projectionMonths]);
 
-    const [showYields, setShowYields] = useState(false);
 
     // Helper for Split Gradient
     const gradientOffset = useMemo(() => {
@@ -428,12 +444,12 @@ const Dashboard = () => {
                         </div>
 
                         {/* Projection Chart */}
-                        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm relative z-0">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 relative z-30">
                                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('wealth_projection')}</h3>
 
                                 <div className="flex bg-white dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 items-center gap-4 shadow-sm">
-                                    <div className="relative">
+                                    <div className="relative" ref={yieldPopupRef}>
                                         <button
                                             onClick={() => setShowYields(!showYields)}
                                             className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors"
@@ -443,7 +459,7 @@ const Dashboard = () => {
                                         </button>
 
                                         {showYields && (
-                                            <div className="absolute top-12 left-0 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 w-64 z-20 animate-in zoom-in-95 duration-200">
+                                            <div className="absolute top-12 right-0 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 w-64 z-50 animate-in zoom-in-95 duration-200">
                                                 <div className="flex justify-between items-center mb-3">
                                                     <h4 className="font-bold text-sm">{t('annual_yield')} (%)</h4>
                                                     <button onClick={() => setShowYields(false)}><X size={14} /></button>
