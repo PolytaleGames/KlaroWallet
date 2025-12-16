@@ -188,10 +188,10 @@ const InvestmentPlan = ({ assets = [], investmentGoal, onUpdateGoal, targets, on
 
 
     return (
-        <div className="space-y-8 max-w-6xl mx-auto animate-in fade-in pb-20">
+        <div className="space-y-8 max-w-6xl mx-auto animate-reveal pb-20">
 
             {/* Header / Goal Setting */}
-            <div className="bg-slate-900 dark:bg-indigo-600 text-white p-8 rounded-3xl shadow-xl relative overflow-hidden">
+            <div className="bg-slate-900 dark:bg-indigo-600 text-white p-8 rounded-3xl shadow-xl relative overflow-hidden animate-pop">
                 <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                     <div>
                         <div className="flex items-center gap-3 mb-4">
@@ -271,7 +271,7 @@ const InvestmentPlan = ({ assets = [], investmentGoal, onUpdateGoal, targets, on
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
                 {/* Left: Strategy Selector */}
-                <div className="lg:col-span-1 space-y-4">
+                <div className="lg:col-span-1 space-y-4 animate-pop delay-100">
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white px-2">{t('strategy')}</h3>
 
                     <button
@@ -323,7 +323,7 @@ const InvestmentPlan = ({ assets = [], investmentGoal, onUpdateGoal, targets, on
                 </div>
 
                 {/* Right: The Action Plan */}
-                <div className="lg:col-span-2">
+                <div className="lg:col-span-2 animate-pop delay-200">
                     <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden min-h-[500px] flex flex-col">
                         <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
                             <div>

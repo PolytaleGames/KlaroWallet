@@ -15,6 +15,7 @@ import EventManager from './EventManager';
 import InvestmentPlan from './InvestmentPlan';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import useHistory from '../hooks/useHistory';
 
 function cn(...inputs) {
     return twMerge(clsx(inputs));
@@ -43,8 +44,15 @@ const Dashboard = () => {
         };
     }, []);
 
-    // Unified State
-    const [data, setData] = useState({
+    // Unified State with History
+    const {
+        state: data,
+        set: setData,
+        undo,
+        redo,
+
+        reset: resetData
+    } = useHistory({
         assets: [],
         budget: {
             values: {},
@@ -60,11 +68,10 @@ const Dashboard = () => {
         debts: [],
         events: [], // Future events
         investmentGoal: 0,
-        investmentGoal: 0,
-        settings: { currency: 'EUR' },
         investmentTargets: { stock: 50, crypto: 30, metal: 10, cash: 10 },
         investmentStrategy: 'active',
-        assetYields: { stock: 7, crypto: 5, real_estate: 3, metal: 2, cash: 0, other: 0 }
+        assetYields: { stock: 7, crypto: 5, real_estate: 3, metal: 2, cash: 0, other: 0 },
+        settings: { currency: 'EUR' }
     });
 
     const [isLoading, setIsLoading] = useState(true);
@@ -78,7 +85,8 @@ const Dashboard = () => {
                 const loadedData = await persistenceService.loadData();
                 // Ensure events array exists (migration for existing users)
                 if (!loadedData.events) loadedData.events = [];
-                setData(loadedData);
+                // Use resetData instead of setData to avoid filling history with initial load
+                resetData(loadedData);
             } catch (e) {
                 console.error("Failed to load data", e);
             } finally {
@@ -107,6 +115,28 @@ const Dashboard = () => {
         return () => clearTimeout(timer);
     }, [data, isLoading]);
 
+    // Keyboard Shortcuts for Undo/Redo
+    useEffect(() => {
+        const handleKeyDown = (event) => {
+            if (event.ctrlKey || event.metaKey) {
+                if (event.key === 'z') {
+                    event.preventDefault();
+                    if (event.shiftKey) {
+                        redo();
+                    } else {
+                        undo();
+                    }
+                } else if (event.key === 'y') {
+                    event.preventDefault();
+                    redo();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [undo, redo]);
+
     // Handlers
     const handleImport = async (e) => {
         const file = e.target.files[0];
@@ -114,7 +144,7 @@ const Dashboard = () => {
 
         try {
             const importedData = await persistenceService.importData(file);
-            setData(importedData);
+            resetData(importedData);
             alert('Data imported successfully!');
             setShowSettings(false);
         } catch (err) {
@@ -131,23 +161,23 @@ const Dashboard = () => {
     const [projectionYield, setProjectionYield] = useState(5); // Annual Yield %
 
     const updateAssets = (newAssets) => {
-        setData(prev => ({ ...prev, assets: newAssets }));
+        setData({ ...data, assets: newAssets });
     };
 
     // Event Handlers
     const handleAddEvent = (event) => {
-        setData(prev => ({ ...prev, events: [...(prev.events || []), event] }));
+        setData({ ...data, events: [...(data.events || []), event] });
     };
 
     const handleRemoveEvent = (id) => {
-        setData(prev => ({ ...prev, events: prev.events.filter(e => e.id !== id) }));
+        setData({ ...data, events: data.events.filter(e => e.id !== id) });
     };
 
     const handleUpdateEvent = (updatedEvent) => {
-        setData(prev => ({
-            ...prev,
-            events: prev.events.map(e => e.id === updatedEvent.id ? updatedEvent : e)
-        }));
+        setData({
+            ...data,
+            events: data.events.map(e => e.id === updatedEvent.id ? updatedEvent : e)
+        });
     };
 
     // --- Financial Projections (Bucket System) ---
@@ -379,11 +409,12 @@ const Dashboard = () => {
                         {saveStatus === 'saving' && <span className="text-slate-400 flex items-center gap-1"><Save size={14} className="animate-pulse" /> {t('saving')}</span>}
                         {saveStatus === 'saved' && <span className="text-emerald-500 flex items-center gap-1"><CheckCircle size={14} /> {t('saved')}</span>}
                         {saveStatus === 'error' && <span className="text-rose-500 flex items-center gap-1"><AlertCircle size={14} /> {t('save_failed')}</span>}
+
                     </div>
                 </div>
 
                 {activeTab === 'overview' && (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+                    <div className="animate-reveal space-y-8">
                         <header className="flex justify-between items-end">
                             <div>
                                 <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{t('financial_overview')}</h1>
@@ -393,22 +424,22 @@ const Dashboard = () => {
 
                         {/* Summary Cards */}
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                            <div className="bg-slate-900 dark:bg-indigo-600 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
+                            <div className="bg-slate-900 dark:bg-indigo-600 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden animate-pop">
                                 <p className="text-slate-400 dark:text-indigo-200 text-sm font-medium mb-2">{t('net_worth')}</p>
                                 <h3 className="text-3xl font-bold">{Math.round(projection.stats.netWorth).toLocaleString()}€</h3>
                                 <div className="absolute right-0 bottom-0 opacity-10 transform translate-y-1/4 translate-x-1/4">
                                     <TrendingUp size={100} />
                                 </div>
                             </div>
-                            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm animate-pop delay-100">
                                 <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-2">{t('total_assets')}</p>
                                 <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{Math.round(projection.stats.totalAssets).toLocaleString()}€</h3>
                             </div>
-                            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm animate-pop delay-200">
                                 <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-2">{t('total_debt')}</p>
                                 <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{Math.round(projection.stats.totalDebt).toLocaleString()}€</h3>
                             </div>
-                            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm animate-pop delay-300">
                                 <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-2">{t('savings_rate')}</p>
                                 <h3 className={`text-2xl font-bold ${projection.stats.monthlySurplus >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                                     {Math.round(projection.stats.monthlySurplus > 0 && projection.stats.netWorth !== 0 ? (projection.stats.monthlySurplus / ((data.budget?.incomeCategories || []).reduce((sum, c) => sum + (Number(data.budget?.values?.[c.id]) || 0), 0) || 1)) * 100 : 0)}%
@@ -458,7 +489,7 @@ const Dashboard = () => {
                         </div>
 
                         {/* Projection Chart */}
-                        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm relative z-0">
+                        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm relative z-0 animate-fade delay-300">
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 relative z-30">
                                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('wealth_projection')}</h3>
 
@@ -488,13 +519,13 @@ const Dashboard = () => {
                                                             <input
                                                                 type="range" min="0" max="20" step="0.5"
                                                                 value={data.assetYields?.[type] || 0}
-                                                                onChange={(e) => setData(prev => ({
-                                                                    ...prev,
+                                                                onChange={(e) => setData({
+                                                                    ...data,
                                                                     assetYields: {
-                                                                        ...prev.assetYields,
+                                                                        ...data.assetYields,
                                                                         [type]: Number(e.target.value)
                                                                     }
-                                                                }))}
+                                                                })}
                                                                 className={cn("w-full h-1.5 rounded-lg appearance-none cursor-pointer bg-slate-200 dark:bg-slate-700",
                                                                     type === 'stock' ? 'accent-blue-500' :
                                                                         type === 'crypto' ? 'accent-violet-500' :
@@ -621,7 +652,7 @@ const Dashboard = () => {
                 )}
 
                 {activeTab === 'planning' && (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="animate-reveal">
                         <EventManager
                             events={data.events || []}
                             onAddEvent={handleAddEvent}
@@ -637,9 +668,9 @@ const Dashboard = () => {
                         investmentGoal={data.investmentGoal || 0}
                         targets={data.investmentTargets || { stock: 50, crypto: 30, metal: 10, cash: 10 }}
                         strategy={data.investmentStrategy || 'smart'}
-                        onUpdateGoal={(val) => setData(prev => ({ ...prev, investmentGoal: val }))}
-                        onUpdateTargets={(val) => setData(prev => ({ ...prev, investmentTargets: val }))}
-                        onUpdateStrategy={(val) => setData(prev => ({ ...prev, investmentStrategy: val }))}
+                        onUpdateGoal={(val) => setData({ ...data, investmentGoal: val })}
+                        onUpdateTargets={(val) => setData({ ...data, investmentTargets: val })}
+                        onUpdateStrategy={(val) => setData({ ...data, investmentStrategy: val })}
                     />
                 )}
 
@@ -653,7 +684,7 @@ const Dashboard = () => {
                 )}
 
                 {activeTab === 'budget' && (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="animate-reveal">
                         <Budget
                             values={data.budget?.values || {}}
                             incomeCategories={data.budget?.incomeCategories || []}
@@ -661,68 +692,68 @@ const Dashboard = () => {
                             debts={data.debts || []}
                             investmentGoal={data.investmentGoal || 0}
                             onValueChange={(id, value) => {
-                                setData(prev => ({
-                                    ...prev,
+                                setData({
+                                    ...data,
                                     budget: {
-                                        ...prev.budget,
-                                        values: { ...prev.budget.values, [id]: Number(value) }
+                                        ...data.budget,
+                                        values: { ...data.budget.values, [id]: Number(value) }
                                     }
-                                }));
+                                });
                             }}
                             onAddCategory={(type, name, icon) => {
                                 const newCat = { id: `${type.substring(0, 3)}_${Date.now()}`, name, icon: icon || 'MoreHorizontal' };
-                                setData(prev => ({
-                                    ...prev,
+                                setData({
+                                    ...data,
                                     budget: {
-                                        ...prev.budget,
+                                        ...data.budget,
                                         [type === 'income' ? 'incomeCategories' : 'expenseCategories']: [
-                                            ...(prev.budget[type === 'income' ? 'incomeCategories' : 'expenseCategories'] || []),
+                                            ...(data.budget[type === 'income' ? 'incomeCategories' : 'expenseCategories'] || []),
                                             newCat
                                         ]
                                     }
-                                }));
+                                });
                             }}
                             onUpdateCategory={(type, id, updates) => {
                                 const key = type === 'income' ? 'incomeCategories' : 'expenseCategories';
-                                setData(prev => ({
-                                    ...prev,
+                                setData({
+                                    ...data,
                                     budget: {
-                                        ...prev.budget,
-                                        [key]: prev.budget[key].map(c => c.id === id ? { ...c, ...updates } : c)
+                                        ...data.budget,
+                                        [key]: data.budget[key].map(c => c.id === id ? { ...c, ...updates } : c)
                                     }
-                                }));
+                                });
                             }}
                             onRemoveCategory={(type, id) => {
                                 const key = type === 'income' ? 'incomeCategories' : 'expenseCategories';
-                                setData(prev => ({
-                                    ...prev,
+                                setData({
+                                    ...data,
                                     budget: {
-                                        ...prev.budget,
-                                        [key]: prev.budget[key].filter(c => c.id !== id)
+                                        ...data.budget,
+                                        [key]: data.budget[key].filter(c => c.id !== id)
                                     }
-                                }));
+                                });
                             }}
                             onReorderCategoryList={(type, newList) => {
                                 const key = type === 'income' ? 'incomeCategories' : 'expenseCategories';
-                                setData(prev => ({
-                                    ...prev,
+                                setData({
+                                    ...data,
                                     budget: {
-                                        ...prev.budget,
+                                        ...data.budget,
                                         [key]: newList
                                     }
-                                }));
+                                });
                             }}
                         />
                     </div>
                 )}
 
                 {activeTab === 'debts' && (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="animate-reveal">
                         <DebtManager
                             debts={data.debts || []}
-                            onAddDebt={(debt) => setData(prev => ({ ...prev, debts: [...prev.debts, debt] }))}
-                            onRemoveDebt={(id) => setData(prev => ({ ...prev, debts: prev.debts.filter(d => d.id !== id) }))}
-                            onUpdateDebt={(id, updates) => setData(prev => ({ ...prev, debts: prev.debts.map(d => d.id === id ? { ...d, ...updates } : d) }))}
+                            onAddDebt={(debt) => setData({ ...data, debts: [...data.debts, debt] })}
+                            onRemoveDebt={(id) => setData({ ...data, debts: data.debts.filter(d => d.id !== id) })}
+                            onUpdateDebt={(id, updates) => setData({ ...data, debts: data.debts.map(d => d.id === id ? { ...d, ...updates } : d) })}
                         />
                     </div>
                 )}
@@ -733,7 +764,7 @@ const Dashboard = () => {
             {createPortal(
                 <button
                     onClick={() => setShowSettings(true)}
-                    className="fixed bottom-6 left-6 z-50 p-4 bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20 rounded-full hover:scale-110 transition-all duration-300"
+                    className="fixed bottom-6 left-6 z-50 p-4 bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20 rounded-full hover:scale-110 transition-all duration-300 animate-pop"
                     title={t('settings')}
                 >
                     <Settings size={24} />
@@ -743,8 +774,8 @@ const Dashboard = () => {
 
             {/* Settings Modal */}
             {showSettings && createPortal(
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in">
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-md p-6 m-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-md p-6 m-4 animate-pop">
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-xl font-bold text-slate-900 dark:text-white">{t('settings')}</h3>
                             <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"><X size={24} /></button>

@@ -475,7 +475,7 @@ const AssetGroup = ({ typeId, assets, activeVariations, onEdit, onRemove, onView
     }, { totalDiff: 0, hasData: false });
 
     return (
-        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden mb-8 animate-in fade-in slide-in-from-bottom-4">
+        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden mb-8 animate-pop delay-100">
             {/* Category Header - Minimalist */}
             <div className={`px-8 py-5 flex items-center justify-between bg-white dark:bg-slate-800 border-b border-slate-50 dark:border-slate-700/50`}>
                 <div className="flex items-center gap-4">
@@ -776,10 +776,10 @@ const AssetManager = ({ assets, onAddAsset, onRemoveAsset, onUpdateAsset }) => {
     })).filter(group => group.items.length > 0);
 
     return (
-        <div className="space-y-8 max-w-7xl mx-auto animate-in fade-in">
+        <div className="space-y-8 max-w-7xl mx-auto animate-reveal">
 
             {/* Summary Header */}
-            <div className="bg-slate-900 dark:bg-indigo-600 text-white p-8 rounded-3xl shadow-xl relative overflow-hidden">
+            <div className="bg-slate-900 dark:bg-indigo-600 text-white p-8 rounded-3xl shadow-xl relative overflow-hidden animate-pop">
                 <div className="relative z-10 flex justify-between items-end">
                     <div>
                         <p className="text-slate-400 dark:text-indigo-200 font-medium mb-2">{t('total_assets')}</p>
