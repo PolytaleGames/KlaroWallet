@@ -110,6 +110,7 @@ export const priceService = {
             '1mo': '1d',
             '3mo': '1d',
             '6mo': '1d',
+            'ytd': '1d',
             '1y': '1wk',
             '5y': '1mo',
             'max': '1mo'

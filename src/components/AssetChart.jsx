@@ -17,8 +17,10 @@ const AssetChart = ({ asset, onClose }) => {
         { id: '5d', label: '5J' },
         { id: '1mo', label: '1M' },
         { id: '6mo', label: '6M' },
+        { id: 'ytd', label: 'YTD' },
         { id: '1y', label: '1A' },
-        { id: '5y', label: '5A' }
+        { id: '5y', label: '5A' },
+        { id: 'max', label: 'MAX' }
     ];
 
     useEffect(() => {
@@ -136,13 +138,14 @@ const AssetChart = ({ asset, onClose }) => {
                                     tickFormatter={(val) => {
                                         const d = new Date(val);
                                         if (range === '1d') return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                                        if (range === '5d') return d.toLocaleDateString(undefined, { weekday: 'short', hour: '2-digit' });
-                                        if (range === '1mo') return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-                                        if (range === '5y') return d.toLocaleDateString(undefined, { year: 'numeric' });
+                                        if (range === '5d') return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' });
+                                        if (range === '1mo' || range === '6mo' || range === 'ytd') return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+                                        if (range === '1y') return d.toLocaleDateString(undefined, { month: 'short' });
+                                        if (range === '5y' || range === 'max') return d.getFullYear();
                                         return d.toLocaleDateString(undefined, { month: 'short' });
                                     }}
-                                    interval="preserveStartEnd"
-                                    minTickGap={30}
+                                    minTickGap={50}
+                                    interval="preserveStart"
                                 />
                                 <YAxis
                                     domain={['auto', 'auto']}
@@ -155,6 +158,8 @@ const AssetChart = ({ asset, onClose }) => {
                                     fillOpacity={1}
                                     fill="url(#colorPrice)"
                                     strokeWidth={3}
+                                    animationDuration={300}
+                                    animationEasing="ease-in-out"
                                 />
                             </AreaChart>
                         </ResponsiveContainer>

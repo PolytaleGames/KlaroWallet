@@ -580,7 +580,7 @@ const Dashboard = () => {
                                             stroke="url(#splitColor)"
                                             strokeWidth={3}
                                             fill="url(#splitColorFill)"
-                                            animationDuration={1500}
+                                            animationDuration={300}
                                             animationEasing="ease-in-out"
                                         />
                                     </AreaChart>
