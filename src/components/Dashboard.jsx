@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import ThemeToggle from './ThemeToggle';
 import LanguageSwitcher from './LanguageSwitcher';
-import { LayoutDashboard, Wallet, Settings, Upload, Download, Save, CheckCircle, AlertCircle, X, PieChart, CreditCard, TrendingUp, TrendingDown, DollarSign, Calendar } from 'lucide-react';
+import { LayoutDashboard, Wallet, Settings, Upload, Download, Save, CheckCircle, AlertCircle, X, PieChart, CreditCard, TrendingUp, TrendingDown, DollarSign, Calendar, Target } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { persistenceService } from '../services/persistenceService';
 import { calculateMonthsRemaining, calculatePrincipal } from '../utils/financeUtils';
@@ -12,6 +12,7 @@ import Budget from './Budget';
 import DebtManager from './DebtManager';
 import AssetManager from './AssetManager';
 import EventManager from './EventManager';
+import InvestmentPlan from './InvestmentPlan';
 
 const Dashboard = () => {
     const { t } = useTranslation();
@@ -35,6 +36,7 @@ const Dashboard = () => {
         },
         debts: [],
         events: [], // Future events
+        investmentGoal: 0,
         settings: { currency: 'EUR' }
     });
 
@@ -255,6 +257,10 @@ const Dashboard = () => {
                         <Calendar size={20} />
                         <span className="font-medium hidden lg:block">{t('planning')}</span>
                     </button>
+                    <button onClick={() => setActiveTab('invest')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'invest' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}>
+                        <Target size={20} />
+                        <span className="font-medium hidden lg:block">{t('investment_plan')}</span>
+                    </button>
                     <button onClick={() => setActiveTab('assets')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'assets' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}>
                         <Wallet size={20} />
                         <span className="font-medium hidden lg:block">{t('assets')}</span>
@@ -402,6 +408,13 @@ const Dashboard = () => {
                     </div>
                 )}
 
+                {activeTab === 'invest' && (
+                    <InvestmentPlan
+                        investmentGoal={data.investmentGoal || 0}
+                        onUpdateGoal={(val) => setData(prev => ({ ...prev, investmentGoal: val }))}
+                    />
+                )}
+
                 {activeTab === 'assets' && (
                     <AssetManager
                         assets={data.assets}
@@ -418,6 +431,7 @@ const Dashboard = () => {
                             incomeCategories={data.budget?.incomeCategories || []}
                             expenseCategories={data.budget?.expenseCategories || []}
                             debts={data.debts || []}
+                            investmentGoal={data.investmentGoal || 0}
                             onValueChange={(id, value) => {
                                 setData(prev => ({
                                     ...prev,

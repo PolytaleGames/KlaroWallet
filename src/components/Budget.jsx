@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
-import { Plus, TrendingUp, TrendingDown, PiggyBank, MoreHorizontal, GripVertical, Trash2, Lock, CreditCard, Calendar } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, PiggyBank, MoreHorizontal, GripVertical, Trash2, Lock, CreditCard, Calendar, Target } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import IconPicker, { ICON_MAP } from './IconPicker';
@@ -166,6 +166,8 @@ const DraggableCategoryRow = ({
     );
 };
 
+
+
 const StaticDebtRow = ({ debt, totalIncome }) => {
     const { t } = useTranslation();
     const totalMonthlyCost = Number(debt.monthlyPayment) + Number(debt.insurance || 0);
@@ -203,12 +205,43 @@ const StaticDebtRow = ({ debt, totalIncome }) => {
                 <span className="text-slate-400 font-medium">€</span>
             </div>
 
-            <div className="w-8" /> {/* Spacer for alignment with delete button */}
+            <div className="w-8" />
         </div>
     );
 };
 
-const Budget = ({ values, debts = [], incomeCategories, expenseCategories, onValueChange, onAddCategory, onUpdateCategory, onReorderCategoryList, onRemoveCategory }) => {
+const StaticInvestmentRow = ({ value }) => {
+    const { t } = useTranslation();
+    return (
+        <div className="p-4 flex items-center gap-4 bg-slate-50/50 dark:bg-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors relative group">
+            <div className="text-slate-300 w-4 flex justify-center">
+                <Lock size={14} />
+            </div>
+
+            <div className="relative z-10 w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-300 flex items-center justify-center">
+                <Target size={20} />
+            </div>
+
+            <div className="relative z-10 flex-1">
+                <p className="font-medium text-slate-700 dark:text-white">{t('investment_plan')}</p>
+                <p className="text-xs text-slate-400">
+                    {t('monthly_investment_budget')}
+                </p>
+            </div>
+
+            <div className="relative z-10 flex items-center gap-1">
+                <span className="w-24 text-right font-bold text-slate-900 dark:text-white">
+                    {value}
+                </span>
+                <span className="text-slate-400 font-medium">€</span>
+            </div>
+
+            <div className="w-8" />
+        </div>
+    );
+};
+
+const Budget = ({ values, debts = [], incomeCategories, expenseCategories, investmentGoal = 0, onValueChange, onAddCategory, onUpdateCategory, onReorderCategoryList, onRemoveCategory }) => {
     const { t } = useTranslation();
     const { theme } = useTheme();
     const [isAdding, setIsAdding] = useState(null);
@@ -238,8 +271,13 @@ const Budget = ({ values, debts = [], incomeCategories, expenseCategories, onVal
     const totalDebtPayments = debts.reduce((sum, d) => sum + Number(d.monthlyPayment) + Number(d.insurance || 0), 0);
 
     const totalExpenses = totalCategoryExpenses + totalDebtPayments;
+    const totalOutflows = totalExpenses + investmentGoal;
 
-    const savings = totalIncome - totalExpenses;
+    // Balance (Cash Flow)
+    const cashFlow = totalIncome - totalOutflows;
+    const isDeficit = cashFlow < 0;
+
+    const savings = totalIncome - totalExpenses; // Still used for strict savings rate (investment count as savings)
     const savingsRate = totalIncome > 0 ? (savings / totalIncome) * 100 : 0;
 
     const getIcon = (iconName) => {
@@ -315,8 +353,20 @@ const Budget = ({ values, debts = [], incomeCategories, expenseCategories, onVal
                     <TrendingUp className="absolute right-4 bottom-4 text-emerald-400/50" size={80} />
                 </div>
                 <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden">
-                    <div className="relative z-10"><p className="text-slate-500 dark:text-slate-400 font-medium mb-1">{t('total_expenses')}</p><h3 className="text-4xl font-bold text-slate-900 dark:text-white">{totalExpenses.toLocaleString()}€</h3></div>
-                    <TrendingDown className="absolute right-4 bottom-4 text-rose-100 dark:text-rose-900/20" size={80} />
+                    <div className="relative z-10">
+                        <p className="text-slate-500 dark:text-slate-400 font-medium mb-1">{t('total_outflows')}</p>
+                        <h3 className={cn("text-4xl font-bold transition-colors", isDeficit ? "text-rose-500" : "text-slate-900 dark:text-white")}>
+                            {totalOutflows.toLocaleString()}€
+                        </h3>
+                        {investmentGoal > 0 && (
+                            <div className="flex gap-2 text-xs font-medium mt-2 text-slate-400 dark:text-slate-500">
+                                <span>{t('expenses_breakdown')}: {totalExpenses.toLocaleString()}€</span>
+                                <span>+</span>
+                                <span>{t('investment_breakdown')}: {investmentGoal.toLocaleString()}€</span>
+                            </div>
+                        )}
+                    </div>
+                    <TrendingDown size={80} className={cn("absolute right-4 bottom-4", isDeficit ? "text-rose-100 dark:text-rose-900/30" : "text-slate-100 dark:text-indigo-900/10")} />
                 </div>
                 <div className="bg-slate-900 dark:bg-indigo-600 text-white p-6 rounded-3xl shadow-lg shadow-slate-900/20 dark:shadow-indigo-900/20 relative overflow-hidden">
                     <div className="relative z-10">
@@ -353,36 +403,52 @@ const Budget = ({ values, debts = [], incomeCategories, expenseCategories, onVal
                     </div>
                 </div>
 
-                {/* Expenses */}
-                <div className="space-y-4">
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2"><span className="w-2 h-6 bg-rose-500 rounded-full" /> {t('expenses')}</h3>
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 divide-y divide-slate-50 dark:divide-slate-700 overflow-hidden">
+                {/* Expenses & Investments */}
+                <div className="space-y-6">
 
-                        {/* Static Debt Rows */}
-                        {debts.map(debt => (
-                            <StaticDebtRow key={debt.id} debt={debt} totalIncome={totalIncome} />
-                        ))}
+                    {/* Investment Section (Conditional) */}
+                    {investmentGoal > 0 && (
+                        <div className="space-y-4">
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <span className="w-2 h-6 bg-slate-900 dark:bg-indigo-500 rounded-full" /> {t('investment')}
+                            </h3>
+                            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden text-sm">
+                                <StaticInvestmentRow value={investmentGoal} />
+                            </div>
+                        </div>
+                    )}
 
-                        {expenseCategories.map((cat, index) => (
-                            <DraggableCategoryRow
-                                key={cat.id}
-                                index={index}
-                                cat={cat}
-                                value={values[cat.id] || 0}
-                                onValueChange={(id, val) => onValueChange(id, val)}
-                                onUpdate={(id, updates) => onUpdateCategory('expense', id, updates)}
-                                onRemove={(id) => onRemoveCategory('expense', id)}
-                                moveRow={(from, to) => moveRow('expense', from, to)}
-                                type="expense"
-                                totalIncome={totalIncome}
-                            />
-                        ))}
-                        <button onClick={() => setIsAdding('expense')} className="w-full p-3 text-sm font-medium text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors flex items-center justify-center gap-2"><Plus size={16} /> {t('add_expense_category')}</button>
+                    {/* Expenses Section */}
+                    <div className="space-y-4">
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2"><span className="w-2 h-6 bg-rose-500 rounded-full" /> {t('expenses')}</h3>
+                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 divide-y divide-slate-50 dark:divide-slate-700 overflow-hidden">
+
+                            {/* Static Debt Rows */}
+                            {debts.map(debt => (
+                                <StaticDebtRow key={debt.id} debt={debt} totalIncome={totalIncome} />
+                            ))}
+
+                            {expenseCategories.map((cat, index) => (
+                                <DraggableCategoryRow
+                                    key={cat.id}
+                                    index={index}
+                                    cat={cat}
+                                    value={values[cat.id] || 0}
+                                    onValueChange={(id, val) => onValueChange(id, val)}
+                                    onUpdate={(id, updates) => onUpdateCategory('expense', id, updates)}
+                                    onRemove={(id) => onRemoveCategory('expense', id)}
+                                    moveRow={(from, to) => moveRow('expense', from, to)}
+                                    type="expense"
+                                    totalIncome={totalIncome}
+                                />
+                            ))}
+                            <button onClick={() => setIsAdding('expense')} className="w-full p-3 text-sm font-medium text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors flex items-center justify-center gap-2"><Plus size={16} /> {t('add_expense_category')}</button>
+                        </div>
                     </div>
-                </div>
 
+                </div>
             </div>
-        </div>
+        </div >
     );
 };
 
