@@ -328,11 +328,7 @@ const Dashboard = () => {
                             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
                                 <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-2">{t('total_debt')}</p>
                                 <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{Math.round(projection.stats.totalDebt).toLocaleString()}€</h3>
-                                {projection.stats.totalInterest > 0 && (
-                                    <p className="text-xs text-rose-500 mt-1 font-medium">
-                                        {t('including_interest', { amount: Math.round(projection.stats.totalInterest).toLocaleString() })}
-                                    </p>
-                                )}
+
                             </div>
                             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
                                 <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-2">{t('monthly_surplus')}</p>

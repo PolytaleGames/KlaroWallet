@@ -259,6 +259,12 @@ const DebtManager = ({ debts, onAddDebt, onRemoveDebt, onUpdateDebt }) => {
         return sum + calculatePrincipal(Number(d.monthlyPayment), Number(d.rate), months);
     }, 0);
 
+    const totalInterest = debts.reduce((sum, d) => {
+        const months = calculateMonthsRemaining(d.endDate);
+        const principal = calculatePrincipal(Number(d.monthlyPayment), Number(d.rate), months);
+        return sum + ((Number(d.monthlyPayment) * months) - principal);
+    }, 0);
+
     return (
         <div className="space-y-8 max-w-5xl mx-auto animate-in fade-in">
 
@@ -272,6 +278,11 @@ const DebtManager = ({ debts, onAddDebt, onRemoveDebt, onUpdateDebt }) => {
                             <TrendingDown size={20} />
                             <span>{t('estimated_principal')}</span>
                         </div>
+                        {totalInterest > 0 && (
+                            <p className="text-sm text-slate-400 dark:text-indigo-300 mt-2">
+                                + {Math.round(totalInterest).toLocaleString()}€ {t('interest').toLowerCase()}
+                            </p>
+                        )}
                     </div>
                     <div className="absolute right-0 bottom-0 opacity-10 transform translate-y-1/4 translate-x-1/4">
                         <DollarSign size={200} />
