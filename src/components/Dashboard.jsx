@@ -147,12 +147,18 @@ const Dashboard = () => {
         (data.assets || []).forEach(a => {
             const val = Number(a.value) || (Number(a.quantity) * Number(a.unitPrice)) || 0;
             const type = a.type || 'other';
+
+            // For Basis (Invested Capital): Use costPrice if available and explicitly quantified
+            const cost = (a.isQuantified && a.costPrice)
+                ? (Number(a.costPrice) * Number(a.quantity))
+                : val; // Fallback to current value if no cost basis known
+
             if (buckets[type] !== undefined) {
                 buckets[type] += val;
-                basis[type] += val; // Assume initial basis = current value for simplicity, or we could add purchasePrice
+                basis[type] += cost;
             } else {
                 buckets['other'] += val;
-                basis['other'] += val;
+                basis['other'] += cost;
             }
         });
 

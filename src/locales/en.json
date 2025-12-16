@@ -180,8 +180,13 @@
     "buy": "BUY",
     "warren_advice_label": "Warren's Advice",
     "warren_advice_dca": "DCA builds wealth through consistency. It ignores market noise and ensures you are always participating in the market's long-term growth.",
-    "warren_advice_smart": "Smart Rebalancing helps you 'Buy Low' automatically. By allocating capital to underperforming assets, you lower your average cost basis and maintain your desired risk profile.",
+    "warren_advice_smart": "Investing is not about beating others at their game. It's about controlling yourself at your own game. Rebalancing ensures strict emotional discipline by keeping your portfolio aligned with your long-term targets.",
     "smart_rebalancing": "Smart Rebalancing",
+    "active_selection": "Smart Accumulation",
+    "active_selection_desc": "Tactical Strategy: Safely lowers your average cost by accumulating your high-conviction assets when they trade at a discount.",
+    "buying_guide": "Algo Explanation",
+    "warren_advice_active": "\"Whether we're talking about socks or stocks, I like buying quality merchandise when it is marked down.\" - Reinforce your winners on the dip.",
+    "warning_falling_knife": "High Risk: This asset has dropped significantly (>30%). Reinforce with caution.",
     "fixed_dca": "Fixed DCA",
     "active": "ACTIVE"
 }
