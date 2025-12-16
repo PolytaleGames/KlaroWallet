@@ -68,7 +68,7 @@ const InvestmentPlan = ({ assets = [], investmentGoal, onUpdateGoal, targets, on
                 recommendations.push({
                     id: cat.id,
                     amount: investmentGoal * (targetPct / 100),
-                    reason: 'Fixed % Split'
+                    reason: t('fixed_split')
                 });
             });
         } else {
@@ -189,7 +189,7 @@ const InvestmentPlan = ({ assets = [], investmentGoal, onUpdateGoal, targets, on
                         </div>
                         {totalTarget !== 100 && (
                             <p className="text-xs text-rose-300 mt-4 flex items-center gap-2 bg-rose-500/10 p-2 rounded-lg">
-                                <AlertCircle size={14} /> Total must be 100%
+                                <AlertCircle size={14} /> {t('total_must_be_100')}
                             </p>
                         )}
                     </div>
@@ -215,9 +215,9 @@ const InvestmentPlan = ({ assets = [], investmentGoal, onUpdateGoal, targets, on
                             <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
                                 <RefreshCw size={20} />
                             </div>
-                            {strategy === 'smart' && <div className="px-2 py-0.5 bg-emerald-500 text-white text-[10px] uppercase font-bold rounded">Active</div>}
+                            {strategy === 'smart' && <div className="px-2 py-0.5 bg-emerald-500 text-white text-[10px] uppercase font-bold rounded">{t('active')}</div>}
                         </div>
-                        <h4 className="font-bold text-lg mb-1">Smart Rebalancing</h4>
+                        <h4 className="font-bold text-lg mb-1">{t('smart_rebalancing')}</h4>
                         <p className={cn("text-xs leading-relaxed", strategy === 'smart' ? "text-slate-300 dark:text-indigo-100" : "text-slate-400 dark:text-slate-500")}>
                             {t('smart_dva_desc') || "Prioritizes underperforming assets to return to target allocation without selling."}
                         </p>
@@ -235,18 +235,18 @@ const InvestmentPlan = ({ assets = [], investmentGoal, onUpdateGoal, targets, on
                             <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
                                 <TrendingUp size={20} />
                             </div>
-                            {strategy === 'dca' && <div className="px-2 py-0.5 bg-emerald-500 text-white text-[10px] uppercase font-bold rounded">Active</div>}
+                            {strategy === 'dca' && <div className="px-2 py-0.5 bg-emerald-500 text-white text-[10px] uppercase font-bold rounded">{t('active')}</div>}
                         </div>
-                        <h4 className="font-bold text-lg mb-1">Fixed DCA</h4>
+                        <h4 className="font-bold text-lg mb-1">{t('fixed_dca')}</h4>
                         <p className={cn("text-xs leading-relaxed", strategy === 'dca' ? "text-slate-300 dark:text-indigo-100" : "text-slate-400 dark:text-slate-500")}>
                             {t('dca_desc') || "Splits budget according to target % regardless of current portfolio balance."}
                         </p>
                     </button>
 
                     <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
-                        <h5 className="font-bold text-slate-700 dark:text-slate-300 text-sm mb-2 flex items-center gap-2"><Briefcase size={14} /> Excluded Assets</h5>
+                        <h5 className="font-bold text-slate-700 dark:text-slate-300 text-sm mb-2 flex items-center gap-2"><Briefcase size={14} /> {t('excluded_assets')}</h5>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
-                            Real Estate and Other assets are excluded from this rebalancing calculator to ensure liquidity.
+                            {t('excluded_assets_desc')}
                         </p>
                     </div>
                 </div>
@@ -257,7 +257,7 @@ const InvestmentPlan = ({ assets = [], investmentGoal, onUpdateGoal, targets, on
                         <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
                             <div>
                                 <h3 className="font-bold text-xl text-slate-900 dark:text-white">{t('monthly_action_plan')}</h3>
-                                <p className="text-slate-400 text-sm mt-0.5">{t('based_on_strategy')}: <span className="text-emerald-600 font-bold uppercase">{strategy === 'smart' ? 'Smart Rebalancing' : 'DCA'}</span></p>
+                                <p className="text-slate-400 text-sm mt-0.5">{t('based_on_strategy')}: <span className="text-emerald-600 font-bold uppercase">{strategy === 'smart' ? t('smart_rebalancing') : t('fixed_dca')}</span></p>
                             </div>
                             <div className="text-right">
                                 <p className="text-xs text-slate-400 uppercase font-bold">{t('total_investment')}</p>
@@ -314,7 +314,7 @@ const InvestmentPlan = ({ assets = [], investmentGoal, onUpdateGoal, targets, on
                                                         </span>
                                                         {isBuying && (
                                                             <span className="text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded">
-                                                                BUY
+                                                                {t('buy')}
                                                             </span>
                                                         )}
                                                     </div>
@@ -330,9 +330,9 @@ const InvestmentPlan = ({ assets = [], investmentGoal, onUpdateGoal, targets, on
                             <div className="flex items-start gap-3">
                                 <ShieldCheck size={20} className="text-emerald-500 mt-0.5 shrink-0" />
                                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    <strong>Warren's Advice:</strong> {strategy === 'smart'
-                                        ? "Smart Rebalancing helps you 'Buy Low' automatically. By allocating capital to underperforming assets, you lower your average cost basis and maintain your desired risk profile."
-                                        : "DCA builds wealth through consistency. It ignores market noise and ensures you are always participating in the market's long-term growth."}
+                                    <strong>{t('warren_advice_label')}:</strong> {strategy === 'smart'
+                                        ? t('warren_advice_smart')
+                                        : t('warren_advice_dca')}
                                 </p>
                             </div>
                         </div>

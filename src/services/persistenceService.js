@@ -42,6 +42,7 @@ export const persistenceService = {
             investmentGoal: data?.investmentGoal || 0,
             investmentTargets: data?.investmentTargets || { stock: 50, crypto: 30, metal: 10, cash: 10 },
             investmentStrategy: data?.investmentStrategy || 'smart',
+            assetYields: data?.assetYields || { stock: 7, crypto: 5, real_estate: 3, metal: 2, cash: 0, other: 0 },
             settings: data?.settings || { currency: 'EUR' },
             lastUpdated: data?.lastUpdated || Date.now()
         };

@@ -48,6 +48,10 @@
     "monthly": "Monthly",
     "loan_payment": "Loan Payment",
     "insurance_abbr": "Ins.",
+    "future_portfolio_composition": "Future Portfolio Composition",
+    "latent_gain": "Latent Gain",
+    "in_months": "in {{count}}mo",
+    "config_yields": "Config Yields",
     "month": "Month",
     "payment": "Payment",
     "interest": "Interest",
@@ -168,5 +172,16 @@
     "target": "Target",
     "recommended_buy": "Recommended Buy",
     "underweight": "Underweight (Buy More)",
-    "overweight": "Overweight"
+    "overweight": "Overweight",
+    "total_must_be_100": "Total must be 100%",
+    "excluded_assets": "Excluded Assets",
+    "excluded_assets_desc": "Real Estate and Other assets are excluded from this rebalancing calculator to ensure liquidity.",
+    "fixed_split": "Fixed % Split",
+    "buy": "BUY",
+    "warren_advice_label": "Warren's Advice",
+    "warren_advice_dca": "DCA builds wealth through consistency. It ignores market noise and ensures you are always participating in the market's long-term growth.",
+    "warren_advice_smart": "Smart Rebalancing helps you 'Buy Low' automatically. By allocating capital to underperforming assets, you lower your average cost basis and maintain your desired risk profile.",
+    "smart_rebalancing": "Smart Rebalancing",
+    "fixed_dca": "Fixed DCA",
+    "active": "ACTIVE"
 }

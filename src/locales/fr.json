@@ -48,6 +48,10 @@
     "monthly": "Mensuel",
     "loan_payment": "Paiement Prêt",
     "insurance_abbr": "Ass.",
+    "future_portfolio_composition": "Composition Future du Portefeuille",
+    "latent_gain": "Plus-value Latente",
+    "in_months": "dans {{count}} mois",
+    "config_yields": "Config Rendements",
     "month": "Mois",
     "payment": "Paiement",
     "interest": "Intérêts",
@@ -168,5 +172,16 @@
     "target": "Cible",
     "recommended_buy": "Achat Recommandé",
     "underweight": "Sous-pondéré (Acheter)",
-    "overweight": "Sur-pondéré"
+    "overweight": "Sur-pondéré",
+    "total_must_be_100": "Le total doit être de 100%",
+    "excluded_assets": "Actifs Exclus",
+    "excluded_assets_desc": "L'immobilier et les autres actifs sont exclus de ce calculateur pour garantir la liquidité.",
+    "fixed_split": "Répartition Fixe %",
+    "buy": "ACHETER",
+    "warren_advice_label": "Conseil de Warren",
+    "warren_advice_dca": "Le DCA construit la richesse par la régularité. Il ignore le bruit du marché et vous assure de toujours participer à sa croissance à long terme.",
+    "warren_advice_smart": "Le rééquilibrage intelligent vous aide à 'acheter bas' automatiquement. En allouant du capital aux actifs sous-performants, vous baissez votre prix de revient moyen et maintenez votre profil de risque.",
+    "smart_rebalancing": "Rééquilibrage Intelligent",
+    "fixed_dca": "DCA Fixe",
+    "active": "ACTIF"
 }

@@ -13,9 +13,15 @@ import DebtManager from './DebtManager';
 import AssetManager from './AssetManager';
 import EventManager from './EventManager';
 import InvestmentPlan from './InvestmentPlan';
+import { clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs) {
+    return twMerge(clsx(inputs));
+}
 
 const Dashboard = () => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const { theme } = useTheme();
     const [activeTab, setActiveTab] = useState('overview');
     const [showSettings, setShowSettings] = useState(false);
@@ -37,7 +43,11 @@ const Dashboard = () => {
         debts: [],
         events: [], // Future events
         investmentGoal: 0,
-        settings: { currency: 'EUR' }
+        investmentGoal: 0,
+        settings: { currency: 'EUR' },
+        investmentTargets: { stock: 50, crypto: 30, metal: 10, cash: 10 },
+        investmentStrategy: 'smart',
+        assetYields: { stock: 7, crypto: 5, real_estate: 3, metal: 2, cash: 0, other: 0 }
     });
 
     const [isLoading, setIsLoading] = useState(true);
@@ -122,16 +132,31 @@ const Dashboard = () => {
         }));
     };
 
-    // --- Financial Projections ---
+    // --- Financial Projections (Bucket System) ---
     const projection = useMemo(() => {
         if (isLoading) return { data: [], stats: {} };
 
         const today = new Date();
         const projectionData = [];
 
-        // 1. Current State
-        const currentAssets = (data.assets || []).reduce((sum, a) => sum + (Number(a.value) || 0), 0);
+        // 1. Initialize Buckets (Current Assets)
+        const buckets = { stock: 0, crypto: 0, metal: 0, cash: 0, real_estate: 0, other: 0 };
+        // Basis tracks the "invested amount" (initial value + contributions) to calculate unrealized gains
+        const basis = { stock: 0, crypto: 0, metal: 0, cash: 0, real_estate: 0, other: 0 };
 
+        (data.assets || []).forEach(a => {
+            const val = Number(a.value) || (Number(a.quantity) * Number(a.unitPrice)) || 0;
+            const type = a.type || 'other';
+            if (buckets[type] !== undefined) {
+                buckets[type] += val;
+                basis[type] += val; // Assume initial basis = current value for simplicity, or we could add purchasePrice
+            } else {
+                buckets['other'] += val;
+                basis['other'] += val;
+            }
+        });
+
+        // Current Debt
         const currentDebts = (data.debts || []).map(d => ({
             ...d,
             remainingMonths: calculateMonthsRemaining(d.endDate),
@@ -144,35 +169,34 @@ const Dashboard = () => {
         const totalDebtPayments = currentDebts.reduce((sum, d) => sum + (d.monthlyCost * d.remainingMonths), 0);
         const totalInterest = totalDebtPayments - totalDebtPrincipal;
 
-        // Budget Monthly Flow
+        // Baseline Flows
         const monthlyIncome = (data.budget?.incomeCategories || []).reduce((sum, c) => sum + (Number(data.budget?.values?.[c.id]) || 0), 0);
         const monthlyExpenses = (data.budget?.expenseCategories || []).reduce((sum, c) => sum + (Number(data.budget?.values?.[c.id]) || 0), 0);
+        const investmentGoal = data.investmentGoal || 0;
+        const targets = data.investmentTargets || { stock: 25, crypto: 25, metal: 25, cash: 25 };
+        const totalTarget = Math.max(1, Object.values(targets).reduce((a, b) => a + b, 0)); // Avoid div/0
+        const yields = data.assetYields || { stock: 7, crypto: 5, real_estate: 3, metal: 2, cash: 0, other: 0 };
 
-        let runningAssets = currentAssets;
 
-        // Loop from 0 to projectionMonths
+        // Simulation Loop
         for (let i = 0; i <= projectionMonths; i++) {
             const date = new Date(today.getFullYear(), today.getMonth() + i, 1);
-            const monthLabel = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+            const monthLabel = date.toLocaleDateString(i18n.language, { month: 'short', year: '2-digit' });
 
-            // Calculate Debt Payments for this month
+            // A. Debt Logic (Payments reduce principal)
             let monthlyDebtPayments = 0;
-
             currentDebts.forEach(d => {
-                if (i < d.remainingMonths) {
-                    monthlyDebtPayments += d.monthlyCost;
-                }
+                if (i < d.remainingMonths) monthlyDebtPayments += d.monthlyCost;
             });
+            const runningDebtPrincipal = currentDebts.reduce((sum, d) =>
+                sum + calculatePrincipal(Number(d.monthlyPayment), Number(d.rate), Math.max(0, d.remainingMonths - i)), 0);
 
-            // Calculate Event Impacts for this month
+            // B. Events Impact
             let monthlyEventsImpact = 0;
             (data.events || []).forEach(event => {
                 const eventDate = new Date(event.date);
                 const eventStartMonthIndex = (eventDate.getFullYear() - today.getFullYear()) * 12 + (eventDate.getMonth() - today.getMonth());
-
-                // If event starts in the future or this month
                 if (i >= eventStartMonthIndex) {
-                    // Check recurrence
                     if (event.recurrence === 'none') {
                         if (i === eventStartMonthIndex) monthlyEventsImpact += Number(event.amount);
                     } else if (event.recurrence === 'monthly') {
@@ -185,48 +209,84 @@ const Dashboard = () => {
                 }
             });
 
-            const monthlySurplus = monthlyIncome - monthlyExpenses - monthlyDebtPayments + monthlyEventsImpact;
+            // C. Monthly Cash Flow (Surplus)
+            // Income - Living Expenses - Debt Payments + One-offs
+            const totalOutflows = monthlyExpenses + monthlyDebtPayments;
+            const netCashFlow = monthlyIncome - totalOutflows + monthlyEventsImpact;
 
-            // Update Running Totals (starting from month 1)
+            // Available to Invest?
+            // User sets "Investment Goal" which is PART of the outflow usually, or separate?
+            // In Budget.jsx, Investment IS NOT an expense category, it's parallel.
+            // So: Available Cash = NetCashFlow.
+            // We deduct InvestmentGoal from Available Cash to put into Investment Buckets.
+            // Remaining goes to Cash Bucket.
+
+            // Wait, if NetCashFlow < InvestmentGoal, we are in deficit? 
+            // We assume InvestmentGoal is respected if funds allow.
+
             if (i > 0) {
-                // Compound Interest on existing assets
-                const monthlyYieldRate = (projectionYield / 100) / 12;
-                const interest = runningAssets * monthlyYieldRate;
+                // D. Grow Buckets (Compound Interest)
+                Object.keys(buckets).forEach(key => {
+                    const monthlyRate = ((yields[key] || 0) / 100) / 12;
+                    buckets[key] += buckets[key] * monthlyRate;
+                });
 
-                runningAssets += interest + monthlySurplus;
+                // E. Inject Investment
+                const amountToInvest = Math.min(Math.max(0, netCashFlow), investmentGoal);
+                const amountToCash = Math.max(0, netCashFlow - investmentGoal);
+
+                // Distribute Investment Amount based on Targets
+                ['stock', 'crypto', 'metal', 'cash'].forEach(key => { // Only liquid targets
+                    const targetShare = (targets[key] || 0) / totalTarget;
+                    const investedAmount = amountToInvest * targetShare;
+                    buckets[key] += investedAmount;
+                    basis[key] += investedAmount; // Basis grows by contribution
+                });
+
+                // Savings (Surplus) goes to Cash
+                buckets['cash'] += amountToCash;
+                basis['cash'] += amountToCash; // Cash basis grows 1:1
+
+                // Handle Deficits? If NetCashFlow < 0, subtract from Cash?
+                if (netCashFlow < 0) {
+                    buckets['cash'] += netCashFlow; // Reduces cash
+                    basis['cash'] += netCashFlow;   // Reduces basis
+                }
             }
 
-            // Calculate Remaining Debt Principal at month i
-            const runningDebtPrincipal = currentDebts.reduce((sum, d) =>
-                sum + calculatePrincipal(Number(d.monthlyPayment), Number(d.rate), Math.max(0, d.remainingMonths - i)), 0);
+            const totalAssets = Object.values(buckets).reduce((a, b) => a + b, 0);
+            const totalBasis = Object.values(basis).reduce((a, b) => a + b, 0);
+            const unrealizedGain = totalAssets - totalBasis;
 
             projectionData.push({
                 name: monthLabel,
-                Assets: Math.round(runningAssets),
+                Assets: Math.round(totalAssets),
                 Debt: Math.round(runningDebtPrincipal),
-                NetWorth: Math.round(runningAssets - runningDebtPrincipal),
+                NetWorth: Math.round(totalAssets - runningDebtPrincipal),
+                UnrealizedGain: Math.round(unrealizedGain),
+                ...Object.fromEntries(Object.entries(buckets).map(([k, v]) => [k, Math.round(v)]))
             });
         }
+
+        const currentTotalAssets = (data.assets || []).reduce((sum, a) => sum + (Number(a.value) || 0), 0);
+        const finalBuckets = projectionData.length > 0 ? projectionData[projectionData.length - 1] : {};
 
         return {
             data: projectionData,
             stats: {
-                netWorth: currentAssets - totalDebtPrincipal,
-                totalAssets: currentAssets,
+                netWorth: currentTotalAssets - totalDebtPrincipal,
+                totalAssets: currentTotalAssets,
                 totalDebt: totalDebtPrincipal,
                 totalInterest: totalInterest,
                 monthlySurplus: monthlyIncome - monthlyExpenses - currentDebts.reduce((sum, d) => sum + d.monthlyCost, 0),
-                savingsRate: monthlyIncome > 0 ? ((monthlyIncome - monthlyExpenses - currentDebts.reduce((sum, d) => sum + d.monthlyCost, 0) + (data.investmentGoal || 0)) / monthlyIncome) * 100 : 0
-                // Note: monthlySurplus ALREADY includes investmentGoal cash (it's not subtracted).
-                // Wait, logic check:
-                // Savings = Income - Expenses (Living)
-                // If InvestmentGoal is NOT in expenseCategories, then Monthly Surplus = Income - Living Expenses - Debt
-                // So Monthly Surplus IS the Savings amount (Cash Savings + Investment Savings).
-                // So Savings Rate = (Monthly Surplus / Income) * 100.
+                savingsRate: monthlyIncome > 0 ? ((monthlyIncome - monthlyExpenses - currentDebts.reduce((sum, d) => sum + d.monthlyCost, 0) + investmentGoal) / monthlyIncome) * 100 : 0,
+                finalBuckets
             }
         };
 
-    }, [data, isLoading, projectionMonths, projectionYield]);
+    }, [data, isLoading, projectionMonths]);
+
+    const [showYields, setShowYields] = useState(false);
 
     // Helper for Split Gradient
     const gradientOffset = useMemo(() => {
@@ -322,7 +382,6 @@ const Dashboard = () => {
                             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
                                 <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-2">{t('total_debt')}</p>
                                 <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{Math.round(projection.stats.totalDebt).toLocaleString()}€</h3>
-
                             </div>
                             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
                                 <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-2">{t('savings_rate')}</p>
@@ -332,23 +391,83 @@ const Dashboard = () => {
                             </div>
                         </div>
 
+                        {/* Final Projection Breakdown Section */}
+                        <div>
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">{t('future_portfolio_composition')}</h3>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {['stock', 'crypto', 'real_estate', 'cash'].map(type => {
+                                    const finalVal = projection.stats.finalBuckets?.[type] || 0;
+                                    const initialVal = (data.assets || []).filter(a => a.type === type).reduce((sum, a) => sum + (Number(a.value) || 0), 0);
+                                    const growth = finalVal - initialVal;
+
+                                    return (
+                                        <div key={type} className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+                                            <div>
+                                                <p className="text-xs font-bold text-slate-400 uppercase mb-1">{t(`asset_${type}`)}</p>
+                                                <p className="text-lg font-bold text-slate-900 dark:text-white">{finalVal.toLocaleString()}€</p>
+                                            </div>
+                                            <div className="flex items-center gap-1 mt-2 text-xs">
+                                                <span className={cn("font-bold", growth >= 0 ? "text-emerald-500" : "text-rose-500")}>
+                                                    {growth >= 0 ? '+' : ''}{growth.toLocaleString()}€
+                                                </span>
+                                                <span className="text-slate-400">{t('in_months', { count: projectionMonths })}</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
                         {/* Projection Chart */}
                         <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('wealth_projection')}</h3>
 
                                 <div className="flex bg-slate-100 dark:bg-slate-700/50 p-1 rounded-xl items-center gap-4 self-start md:self-auto">
-                                    <div className="flex items-center gap-2 px-3">
-                                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase whitespace-nowrap">{t('annual_yield')}: {projectionYield}%</span>
-                                        <input
-                                            type="range"
-                                            min="0"
-                                            max="20"
-                                            step="1"
-                                            value={projectionYield}
-                                            onChange={(e) => setProjectionYield(Number(e.target.value))}
-                                            className="w-24 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-600 accent-emerald-500"
-                                        />
+                                    <div className="relative">
+                                        <button
+                                            onClick={() => setShowYields(!showYields)}
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 transition-colors"
+                                        >
+                                            <TrendingUp size={14} />
+                                            {t('config_yields')}
+                                        </button>
+
+                                        {showYields && (
+                                            <div className="absolute top-10 right-0 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 w-64 z-20 animate-in zoom-in-95 duration-200">
+                                                <div className="flex justify-between items-center mb-3">
+                                                    <h4 className="font-bold text-sm">{t('annual_yield')} (%)</h4>
+                                                    <button onClick={() => setShowYields(false)}><X size={14} /></button>
+                                                </div>
+                                                <div className="space-y-3">
+                                                    {['stock', 'crypto', 'real_estate', 'metal', 'cash'].map(type => (
+                                                        <div key={type}>
+                                                            <div className="flex justify-between text-xs mb-1 text-slate-500 dark:text-slate-400">
+                                                                <span className="capitalize">{t(`asset_${type}`)}</span>
+                                                                <span className="font-bold">{data.assetYields?.[type] || 0}%</span>
+                                                            </div>
+                                                            <input
+                                                                type="range" min="0" max="20" step="0.5"
+                                                                value={data.assetYields?.[type] || 0}
+                                                                onChange={(e) => setData(prev => ({
+                                                                    ...prev,
+                                                                    assetYields: {
+                                                                        ...prev.assetYields,
+                                                                        [type]: Number(e.target.value)
+                                                                    }
+                                                                }))}
+                                                                className={cn("w-full h-1.5 rounded-lg appearance-none cursor-pointer bg-slate-200 dark:bg-slate-700",
+                                                                    type === 'stock' ? 'accent-blue-500' :
+                                                                        type === 'crypto' ? 'accent-violet-500' :
+                                                                            type === 'cash' ? 'accent-emerald-500' :
+                                                                                'accent-slate-500'
+                                                                )}
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="h-6 w-px bg-slate-200 dark:bg-slate-600" />
 
@@ -394,14 +513,46 @@ const Dashboard = () => {
                                             tickFormatter={(value) => `${value / 1000}k`}
                                         />
                                         <Tooltip
-                                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', backgroundColor: theme === 'dark' ? '#1e293b' : '#fff', color: theme === 'dark' ? '#fff' : '#000' }}
-                                            formatter={(value, name) => [
-                                                <span className={name === 'NetWorth' ? (value >= 0 ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold') : ''}>
-                                                    {value.toLocaleString()}€
-                                                </span>,
-                                                name === 'NetWorth' ? t('net_worth') : name
-                                            ]}
-                                            labelStyle={{ color: theme === 'dark' ? '#94a3b8' : '#64748b', marginBottom: '0.5rem' }}
+                                            content={({ active, payload, label }) => {
+                                                if (active && payload && payload.length) {
+                                                    const data = payload[0].payload;
+                                                    return (
+                                                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700">
+                                                            <p className="font-bold text-slate-900 dark:text-white mb-2">{label}</p>
+                                                            <div className="space-y-1 text-xs">
+                                                                <div className="flex justify-between gap-4">
+                                                                    <span className="text-slate-500">{t('net_worth')}</span>
+                                                                    <span className={cn("font-bold", data.NetWorth >= 0 ? "text-emerald-500" : "text-rose-500")}>
+                                                                        {data.NetWorth.toLocaleString()}€
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex justify-between gap-4">
+                                                                    <span className="text-slate-500">{t('total_assets')}</span>
+                                                                    <span className="font-bold text-slate-700 dark:text-slate-300">
+                                                                        {data.Assets.toLocaleString()}€
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex justify-between gap-4">
+                                                                    <span className="text-slate-500">{t('latent_gain')}</span>
+                                                                    <span className="font-bold text-emerald-500">
+                                                                        +{data.UnrealizedGain?.toLocaleString()}€
+                                                                    </span>
+                                                                </div>
+                                                                <div className="h-px bg-slate-100 dark:bg-slate-700 my-2" />
+                                                                {['stock', 'crypto', 'real_estate', 'metal', 'cash'].map(k => (
+                                                                    <div key={k} className="flex justify-between gap-4">
+                                                                        <span className="text-slate-400 capitalize">{t(`asset_${k}`)}</span>
+                                                                        <span className="font-mono text-slate-600 dark:text-slate-400">
+                                                                            {(data[k] || 0).toLocaleString()}€
+                                                                        </span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
+                                            }}
                                         />
                                         <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="3 3" />
                                         <Area
