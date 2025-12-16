@@ -307,7 +307,7 @@ const AssetForm = ({ initialData, onSubmit, onCancel }) => {
                             <div className="col-span-2 md:col-span-1 bg-slate-50 dark:bg-slate-700 p-3 rounded-xl flex flex-col justify-center">
                                 <span className="text-sm text-slate-500 dark:text-slate-400">{t('calculated_total')}</span>
                                 <span className="font-bold text-slate-900 dark:text-white text-lg">
-                                    {((Number(formData.quantity) || 0) * (Number(formData.unitPrice) || 0)).toLocaleString()}€
+                                    {((Number(formData.quantity) || 0) * (Number(formData.unitPrice) || 0)).toLocaleString(undefined, { maximumFractionDigits: 1 })}€
                                 </span>
                             </div>
                         </div>
@@ -346,55 +346,91 @@ const AssetForm = ({ initialData, onSubmit, onCancel }) => {
     );
 };
 
-const AssetGroup = ({ typeId, assets, onEdit, onRemove }) => {
+const AssetGroup = ({ typeId, assets, activeVariations, onEdit, onRemove, totalPortfolioValue }) => {
     const { t } = useTranslation();
-    const typeDef = ASSET_TYPES.find(t => t.id === typeId);
-    if (!typeDef || assets.length === 0) return null;
-
-    const totalValue = assets.reduce((sum, a) => sum + (Number(a.value) || 0), 0);
-    const Icon = typeDef.icon;
+    const type = ASSET_TYPES.find(t => t.id === typeId);
+    const Icon = type.icon;
+    const categoryValue = assets.reduce((sum, asset) => sum + (Number(asset.value) || 0), 0);
+    const categoryWeight = totalPortfolioValue > 0 ? (categoryValue / totalPortfolioValue) * 100 : 0;
 
     return (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-            <div className="p-4 bg-slate-50 dark:bg-slate-700 border-b border-slate-100 dark:border-slate-600 flex justify-between items-center">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden mb-6">
+            <div className={`p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-${type.color}-50/50 dark:bg-${type.color}-900/10`}>
                 <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg bg-${typeDef.color}-100 dark:bg-${typeDef.color}-900/30 text-${typeDef.color}-600 dark:text-${typeDef.color}-400`}>
+                    <div className={`p-2 rounded-xl bg-${type.color}-100 dark:bg-${type.color}-900/30 text-${type.color}-600 dark:text-${type.color}-400`}>
                         <Icon size={20} />
                     </div>
-                    <h3 className="font-bold text-slate-900 dark:text-white">{t(typeDef.translationKey)}</h3>
+                    <div>
+                        <h3 className="font-bold text-slate-900 dark:text-white">{t(type.translationKey)}</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{assets.length} {assets.length > 1 ? t('assets') : t('asset')}</p>
+                    </div>
                 </div>
-                <span className="font-bold text-slate-900 dark:text-white">{totalValue.toLocaleString()}€</span>
+                <div className="text-right">
+                    <p className="font-bold text-slate-900 dark:text-white">{categoryValue.toLocaleString(undefined, { maximumFractionDigits: 1 })}€</p>
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{categoryWeight.toFixed(1)}%</p>
+                </div>
             </div>
+
+            {/* Table Header */}
+            <div className="flex items-center justify-between px-4 py-2 bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <div>{t('asset_name')}</div>
+                <div className="flex items-center gap-4">
+                    <div className="w-20 text-right">{t('weight')}</div>
+                    <div className="w-24 text-right">{t('value')}</div>
+                </div>
+            </div>
+
             <div className="divide-y divide-slate-50 dark:divide-slate-700">
-                {assets.map(asset => (
-                    <div key={asset.id} className="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors group">
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <p className="font-medium text-slate-900 dark:text-white">{asset.name}</p>
-                                {asset.ticker && <span className="text-xs font-bold px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded uppercase">{asset.ticker}</span>}
-                            </div>
-                            {asset.isQuantified && (
-                                <div>
-                                    <p className="text-xs text-slate-400">
-                                        {asset.quantity} x {Number(asset.unitPrice || 0).toLocaleString()}€
-                                    </p>
-                                    {asset.originalCurrency && asset.originalCurrency !== 'EUR' && (
-                                        <p className="text-[10px] text-slate-400 italic">
-                                            ({Number(asset.originalUnitPrice).toFixed(2)} {asset.originalCurrency})
-                                        </p>
+                {assets.map(asset => {
+                    const assetValue = Number(asset.value) || 0;
+                    const assetWeight = totalPortfolioValue > 0 ? (assetValue / totalPortfolioValue) * 100 : 0;
+
+                    return (
+                        <div key={asset.id} className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors group">
+                            <div className="min-w-0 pr-4">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold text-slate-900 dark:text-white truncate">{asset.name}</span>
+                                    {asset.ticker && <span className="text-xs font-bold px-1.5 py-0.5 bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-400 rounded uppercase">{asset.ticker}</span>}
+                                    {activeVariations[asset.id] !== undefined && (
+                                        <span className={cn(
+                                            "text-xs font-medium px-1.5 py-0.5 rounded",
+                                            activeVariations[asset.id] >= 0 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
+                                        )}>
+                                            {activeVariations[asset.id] >= 0 ? '+' : ''}{activeVariations[asset.id].toFixed(1)}%
+                                        </span>
                                     )}
                                 </div>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <span className="font-bold text-slate-700 dark:text-slate-300">{Number(asset.value || 0).toLocaleString()}€</span>
-                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => onEdit(asset)} className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-200 dark:hover:text-white dark:hover:bg-slate-600 rounded-lg"><Edit2 size={16} /></button>
-                                <button onClick={() => onRemove(asset.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg"><Trash2 size={16} /></button>
+                                {asset.isQuantified && (
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                        {Number(asset.quantity).toLocaleString(undefined, { maximumFractionDigits: 4 })} x {Number(asset.unitPrice).toLocaleString(undefined, { maximumFractionDigits: 1 })}€
+                                    </p>
+                                )}
+                            </div>
+
+                            <div className="flex items-center gap-4">
+                                <div className="w-20 text-right">
+                                    <span className="text-xs font-medium px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg">
+                                        {assetWeight.toFixed(1)}%
+                                    </span>
+                                </div>
+
+                                <div className="flex items-center justify-end gap-2 w-[160px]">
+                                    <div className="text-right font-bold text-slate-700 dark:text-slate-300 flex-1">
+                                        {assetValue.toLocaleString(undefined, { maximumFractionDigits: 1 })}€
+                                    </div>
+                                    <div className="flex gap-1 w-0 overflow-hidden opacity-0 group-hover:w-auto group-hover:opacity-100 transition-all duration-300">
+                                        <button onClick={() => onEdit(asset)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors">
+                                            <Edit2 size={16} />
+                                        </button>
+                                        <button onClick={() => onRemove(asset.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors">
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );
@@ -405,6 +441,11 @@ const AssetManager = ({ assets, onAddAsset, onRemoveAsset, onUpdateAsset }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [editingAsset, setEditingAsset] = useState(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [activeVariations, setActiveVariations] = useState({});
+
+    useEffect(() => {
+        refreshPrices();
+    }, []);
 
     const handleSave = (data) => {
         if (editingAsset) {
@@ -435,8 +476,16 @@ const AssetManager = ({ assets, onAddAsset, onRemoveAsset, onUpdateAsset }) => {
                         }
 
                         const newValue = (Number(asset.quantity) || 0) * finalPrice;
+
+                        // Update variations locally
+                        if (data.changePercent !== undefined) {
+                            setActiveVariations(prev => ({ ...prev, [asset.id]: data.changePercent }));
+                        }
+
+                        // Persist price, remove changePercent from persistence if present
+                        const { changePercent, ...cleanAsset } = asset;
                         onUpdateAsset(asset.id, {
-                            ...asset,
+                            ...cleanAsset,
                             unitPrice: finalPrice,
                             value: newValue,
                             originalCurrency: data.currency,
@@ -469,7 +518,7 @@ const AssetManager = ({ assets, onAddAsset, onRemoveAsset, onUpdateAsset }) => {
             <div className="bg-slate-900 dark:bg-indigo-600 text-white p-8 rounded-3xl shadow-xl relative overflow-hidden">
                 <div className="relative z-10">
                     <p className="text-slate-400 dark:text-indigo-200 font-medium mb-2">{t('total_assets')}</p>
-                    <h2 className="text-5xl font-bold mb-4">{Math.round(totalAssets).toLocaleString()}€</h2>
+                    <h2 className="text-5xl font-bold mb-4">{totalAssets.toLocaleString(undefined, { maximumFractionDigits: 1 })}€</h2>
                     <div className="flex items-center gap-2 text-slate-300 dark:text-indigo-100">
                         <TrendingUp size={20} />
                         <span>{t('your_wealth')}</span>
@@ -501,24 +550,76 @@ const AssetManager = ({ assets, onAddAsset, onRemoveAsset, onUpdateAsset }) => {
                 </div>
             </div>
 
-            {/* Asset List */}
-            <div className="space-y-6">
-                {(assets || []).length === 0 ? (
-                    <div className="text-center py-20 bg-slate-50 dark:bg-slate-700 rounded-3xl border border-dashed border-slate-200 dark:border-slate-600">
-                        <p className="text-slate-400 font-medium">{t('no_assets_added')}</p>
-                        <button onClick={() => setIsAdding(true)} className="mt-4 text-emerald-600 dark:text-emerald-400 font-bold hover:underline">{t('add_first_asset')}</button>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Left Column - Charts & Summary */}
+                <div className="space-y-6">
+
+
+                    {/* Asset Allocation Chart */}
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        <h3 className="font-bold text-slate-900 dark:text-white mb-6">{t('allocation')}</h3>
+                        <div className="space-y-4">
+                            {groupedAssets.map(group => {
+                                const type = ASSET_TYPES.find(t => t.id === group.typeId);
+                                const value = group.items.reduce((sum, a) => sum + (Number(a.value) || 0), 0);
+                                const percentage = totalAssets > 0 ? (value / totalAssets) * 100 : 0;
+
+                                // Safe color mapping for Tailwind
+                                const colorMap = {
+                                    emerald: 'bg-emerald-500',
+                                    blue: 'bg-blue-500',
+                                    violet: 'bg-violet-500',
+                                    amber: 'bg-amber-500',
+                                    rose: 'bg-rose-500',
+                                    slate: 'bg-slate-500'
+                                };
+
+                                return (
+                                    <div key={group.typeId}>
+                                        <div className="flex justify-between text-sm mb-1">
+                                            <span className="text-slate-600 dark:text-slate-300">{t(type.translationKey)}</span>
+                                            <span className="font-medium text-slate-900 dark:text-white">{percentage.toFixed(1)}%</span>
+                                        </div>
+                                        <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                                            <div
+                                                className={`h-full ${colorMap[type.color] || 'bg-slate-500'} transition-all duration-500`}
+                                                style={{ width: `${percentage}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
-                ) : (
-                    groupedAssets.map(group => (
+                </div>
+
+                {/* Right Column - Asset List */}
+                <div className="lg:col-span-2">
+                    {groupedAssets.map(group => (
                         <AssetGroup
                             key={group.typeId}
                             typeId={group.typeId}
                             assets={group.items}
+                            activeVariations={activeVariations}
                             onEdit={setEditingAsset}
                             onRemove={onRemoveAsset}
+                            totalPortfolioValue={totalAssets}
                         />
-                    ))
-                )}
+                    ))}
+
+                    {assets.length === 0 && (
+                        <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
+                            <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+                                <Plus size={32} className="text-slate-400" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{t('no_assets_added')}</h3>
+                            <p className="text-slate-500 dark:text-slate-400 mb-6">{t('add_first_asset')}</p>
+                            <button onClick={() => { setEditingAsset(null); setIsAdding(true); }} className="px-6 py-2 bg-slate-900 dark:bg-indigo-600 text-white rounded-xl font-bold hover:bg-slate-800 dark:hover:bg-indigo-700 transition-colors">
+                                {t('add_asset')}
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Modals */}

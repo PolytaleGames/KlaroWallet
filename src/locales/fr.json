@@ -15,8 +15,9 @@
     "budget": "Budget",
     "planning": "Planification",
     "assets": "Actifs",
+    "asset": "Actif",
     "debts": "Dettes",
-    "financial_overview": "Vue d'ensemble financière",
+    "financial_overview": "Vue d'overview financière",
     "financial_overview_desc": "Votre projection de richesse basée sur le budget et les actifs actuels.",
     "net_worth": "Valeur Nette",
     "total_assets": "Total des Actifs",
@@ -114,7 +115,7 @@
     "one_time": "Une fois",
     "yearly": "Annuel",
     "custom_interval": "Personnalisé (Tous les X mois)",
-    "interval_months": "Intervalle (Mois)",
+    "interval_months": "Interval (Mois)",
     "save_event": "Enregistrer",
     "update_event": "Mettre à jour",
     "no_events_planned": "Aucun événement futur prévu.",
@@ -125,5 +126,8 @@
     "saving": "Enregistrement...",
     "saved": "Enregistré",
     "save_failed": "Échec de l'enregistrement",
-    "add_asset": "Ajouter un actif"
+    "add_asset": "Ajouter un actif",
+    "weight": "Poids",
+    "value": "Valeur",
+    "allocation": "Répartition"
 }

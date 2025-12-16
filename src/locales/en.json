@@ -15,6 +15,7 @@
     "budget": "Budget",
     "planning": "Planning",
     "assets": "Assets",
+    "asset": "Asset",
     "debts": "Debts",
     "financial_overview": "Financial Overview",
     "financial_overview_desc": "Your wealth projection based on current budget and assets.",
@@ -125,5 +126,8 @@
     "saving": "Saving...",
     "saved": "Saved",
     "save_failed": "Save Failed",
-    "add_asset": "Add Asset"
+    "add_asset": "Add Asset",
+    "weight": "Weight",
+    "value": "Value",
+    "allocation": "Allocation"
 }

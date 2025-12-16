@@ -33,9 +33,14 @@ export const priceService = {
                 throw new Error('Invalid data format');
             }
 
+            const price = result.meta.regularMarketPrice;
+            const previousClose = result.meta.chartPreviousClose || result.meta.previousClose || price;
+            const changePercent = ((price - previousClose) / previousClose) * 100;
+
             return {
-                price: result.meta.regularMarketPrice,
-                currency: result.meta.currency || 'EUR'
+                price: price,
+                currency: result.meta.currency || 'EUR',
+                changePercent: changePercent
             };
         } catch (error) {
             console.error(`Failed to fetch price for ${ticker}:`, error);
