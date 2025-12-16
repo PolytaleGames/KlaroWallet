@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
-import { Plus, Trash2, Edit2, TrendingUp, Euro, Wallet, Briefcase, Landmark, Coins, Home, X, Eye, Search } from 'lucide-react';
+import { Plus, Trash2, Edit2, TrendingUp, Euro, Wallet, Briefcase, Landmark, Coins, Home, X, Eye, Search, RefreshCw, ShieldCheck, Zap } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { priceService } from '../services/priceService';
@@ -600,6 +600,7 @@ const AssetManager = ({ assets, onAddAsset, onRemoveAsset, onUpdateAsset }) => {
     const [editingAsset, setEditingAsset] = useState(null);
     const [viewingAsset, setViewingAsset] = useState(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isSuccess, setIsSuccess] = useState(false);
     const [activeVariations, setActiveVariations] = useState({});
 
     useEffect(() => {
@@ -668,7 +669,10 @@ const AssetManager = ({ assets, onAddAsset, onRemoveAsset, onUpdateAsset }) => {
             }
         }
 
+        await new Promise(r => setTimeout(r, 600)); // Minimum delight time
         setIsRefreshing(false);
+        setIsSuccess(true);
+        setTimeout(() => setIsSuccess(false), 2000); // Reset after 2s
     };
 
     const totalAssets = (assets || []).reduce((sum, a) => sum + (Number(a.value) || 0), 0);
@@ -744,11 +748,46 @@ const AssetManager = ({ assets, onAddAsset, onRemoveAsset, onUpdateAsset }) => {
                 <div className="flex gap-2">
                     <button
                         onClick={refreshPrices}
-                        disabled={isRefreshing}
-                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors font-medium disabled:opacity-50"
+                        disabled={isRefreshing || isSuccess}
+                        className={`
+                            relative group overflow-hidden w-40 h-10 flex items-center justify-center rounded-xl font-bold text-sm transition-all duration-300
+                            ${isSuccess
+                                ? 'bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.4)]'
+                                : isRefreshing
+                                    ? 'bg-slate-900 border-slate-700 text-indigo-400 cursor-wait'
+                                    : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-500 dark:hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:shadow-[0_0_15px_rgba(99,102,241,0.15)]'
+                            }
+                        `}
                     >
-                        <span className={isRefreshing ? "animate-spin" : ""}>↻</span>
-                        {isRefreshing ? t('updating') : t('update_prices')}
+                        {/* Gradient Scan Effect (Idle) */}
+                        {!isRefreshing && !isSuccess && (
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-indigo-500/10 to-transparent -translate-x-full group-hover:animate-shimmer" />
+                        )}
+
+                        {/* Content Container */}
+                        <div className="relative flex items-center gap-2">
+                            {isRefreshing ? (
+                                <>
+                                    <div className="relative">
+                                        <div className="absolute inset-0 animate-ping opacity-30 bg-indigo-500 rounded-full" />
+                                        <RefreshCw size={16} className="animate-spin text-indigo-500" />
+                                    </div>
+                                    <span className="text-slate-400 animate-pulse">
+                                        Scanning...
+                                    </span>
+                                </>
+                            ) : isSuccess ? (
+                                <>
+                                    <ShieldCheck size={18} className="animate-in zoom-in spin-in-90 duration-300" />
+                                    <span>Updated!</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Zap size={16} className={`transition-transform duration-300 ${isRefreshing ? 'rotate-180' : 'group-hover:scale-110'}`} />
+                                    <span>{t('update_prices')}</span>
+                                </>
+                            )}
+                        </div>
                     </button>
                     <button
                         onClick={() => setIsAdding(true)}
