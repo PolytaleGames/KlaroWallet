@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { Plus, Trash2, Edit2, TrendingDown, Calendar, Percent, DollarSign, Shield, ChevronDown, ChevronUp, X } from 'lucide-react';
@@ -136,7 +137,7 @@ const DebtForm = ({ initialData, onSubmit, onCancel }) => {
         onSubmit(formData);
     };
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in">
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-lg p-6 m-4">
                 <div className="flex justify-between items-center mb-6">
@@ -234,7 +235,8 @@ const DebtForm = ({ initialData, onSubmit, onCancel }) => {
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

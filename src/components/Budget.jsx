@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { Plus, TrendingUp, TrendingDown, PiggyBank, MoreHorizontal, GripVertical, Trash2, Lock, CreditCard, Calendar } from 'lucide-react';
@@ -259,7 +260,7 @@ const Budget = ({ values, debts = [], incomeCategories, expenseCategories, onVal
             )}
 
             {/* Add Category Modal */}
-            {isAdding && (
+            {isAdding && createPortal(
                 <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in">
                     <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-sm p-6 m-4">
                         <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">{t('add_category', { type: isAdding === 'income' ? t('income_sources') : t('expenses') })}</h3>
@@ -290,7 +291,8 @@ const Budget = ({ values, debts = [], incomeCategories, expenseCategories, onVal
                             </div>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* Static Header */}

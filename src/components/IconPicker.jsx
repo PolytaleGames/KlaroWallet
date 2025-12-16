@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import {
     Briefcase, Star, Zap, Home, ShoppingCart, Coffee, MoreHorizontal,
     Smartphone, Car, Plane, Gift, Heart, Music, Book, Camera,
@@ -63,7 +64,7 @@ const IconPicker = ({ selectedIcon, onSelect, onClose }) => {
         iconName.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in">
             <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-2xl p-6 m-4 max-h-[80vh] flex flex-col">
                 <div className="flex justify-between items-center mb-4">
@@ -103,7 +104,8 @@ const IconPicker = ({ selectedIcon, onSelect, onClose }) => {
                     })}
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

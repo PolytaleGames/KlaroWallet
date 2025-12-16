@@ -500,7 +500,7 @@ const Dashboard = () => {
             )}
 
             {/* Settings Modal */}
-            {showSettings && (
+            {showSettings && createPortal(
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in">
                     <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-md p-6 m-4">
                         <div className="flex justify-between items-center mb-6">
@@ -539,7 +539,8 @@ const Dashboard = () => {
                             </div>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
