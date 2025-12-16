@@ -4,6 +4,39 @@
 
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-900;
+    @apply bg-slate-50 text-slate-900 antialiased selection:bg-emerald-500 selection:text-white;
+  }
+
+  /* Reset focus outlines to prevent dotted lines */
+  *:focus {
+    outline: none;
+  }
+
+  /* Prevent horizontal scroll and potential artifacts */
+  html,
+  body {
+    overflow-x: hidden;
+    width: 100%;
+  }
+
+  /* Hide number input spin buttons (Chrome, Safari, Edge, Opera) */
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  /* Firefox */
+  input[type=number] {
+    -moz-appearance: textfield;
+  }
+
+  /* Force GPU acceleration to fix background rendering artifacts */
+  .bg-white,
+  .bg-slate-800,
+  .bg-slate-900,
+  .card {
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 }

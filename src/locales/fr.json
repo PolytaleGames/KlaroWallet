@@ -124,5 +124,6 @@
     "including_interest": "dont {{amount}}€ d'intérêts",
     "saving": "Enregistrement...",
     "saved": "Enregistré",
-    "save_failed": "Échec de l'enregistrement"
+    "save_failed": "Échec de l'enregistrement",
+    "add_asset": "Ajouter un actif"
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import ThemeToggle from './ThemeToggle';
@@ -264,13 +265,7 @@ const Dashboard = () => {
                     </button>
                 </nav>
 
-                <div className="p-4 border-t border-slate-100 dark:border-slate-700 space-y-2">
 
-                    <button onClick={() => setShowSettings(true)} className="w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white transition-all">
-                        <Settings size={20} />
-                        <span className="font-medium hidden lg:block">{t('settings')}</span>
-                    </button>
-                </div>
             </aside>
 
             {/* Main Content */}
@@ -490,6 +485,19 @@ const Dashboard = () => {
                     </div>
                 )}
             </main>
+
+
+            {/* Floating Settings Button - Portalled to body to avoid transform stacking context issues */}
+            {createPortal(
+                <button
+                    onClick={() => setShowSettings(true)}
+                    className="fixed bottom-6 left-6 z-50 p-4 bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20 rounded-full hover:scale-110 transition-all duration-300"
+                    title={t('settings')}
+                >
+                    <Settings size={24} />
+                </button>,
+                document.body
+            )}
 
             {/* Settings Modal */}
             {showSettings && (

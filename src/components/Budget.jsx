@@ -75,7 +75,7 @@ const DraggableCategoryRow = ({
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDrop={handleDrop}
-            className="p-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors group relative cursor-move"
+            className="p-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors group relative cursor-move select-none"
         >
             {showIconPicker && (
                 <IconPicker
@@ -95,9 +95,9 @@ const DraggableCategoryRow = ({
                 </div>
             )}
 
-            {/* Drag Handle */}
-            <div className="text-slate-300 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing">
-                <GripVertical size={16} />
+            {/* Drag Handle - Always visible for better UX */}
+            <div className="text-slate-400 cursor-grab active:cursor-grabbing p-2 hover:text-slate-600 dark:hover:text-slate-200">
+                <GripVertical size={20} />
             </div>
 
             {/* Icon (Click to Edit) */}

@@ -124,5 +124,6 @@
     "including_interest": "including {{amount}}€ interest",
     "saving": "Saving...",
     "saved": "Saved",
-    "save_failed": "Save Failed"
+    "save_failed": "Save Failed",
+    "add_asset": "Add Asset"
 }
