@@ -60,6 +60,7 @@ const Dashboard = () => {
     const { theme } = useTheme();
     const [activeTab, setActiveTab] = useState('overview');
     const [showSettings, setShowSettings] = useState(false);
+    const [showMobileMenu, setShowMobileMenu] = useState(false);
 
     // Config Popup State
     const [showYields, setShowYields] = useState(false);
