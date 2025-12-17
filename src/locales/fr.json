@@ -212,5 +212,6 @@
     "expense": "Dépense",
     "interval_every": "Tous les",
     "interval_months_unit": "mois",
-    "define_event_details": "Définissez les détails de ce mouvement financier."
+    "define_event_details": "Définissez les détails de ce mouvement financier.",
+    "sign_out": "Déconnexion"
 }

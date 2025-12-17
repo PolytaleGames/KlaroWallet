@@ -520,15 +520,38 @@ const Dashboard = () => {
                         </button>
                     </nav>
 
-                    <div className="p-4 border-t border-slate-200 dark:border-slate-700 mt-auto">
-                        <div className="flex flex-col gap-2">
-                            <div className="px-2 text-xs font-bold text-slate-400 truncate" title={user?.email}>{user?.email}</div>
+                    <div className="p-4 border-t border-slate-200 dark:border-slate-700 mt-auto space-y-4">
+                        {user && (
+                            <div className="flex items-center gap-3 px-2">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs shadow-md">
+                                    {user.email?.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="flex-1 min-w-0 hidden lg:block">
+                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate" title={user.email}>{user.email}</p>
+                                    <p className="text-[10px] text-emerald-500 font-medium flex items-center gap-1">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                                        Online
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setShowSettings(true)}
+                                className="flex-1 flex items-center justify-center lg:justify-start gap-2 p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700/50 transition-all"
+                                title={t('settings')}
+                            >
+                                <Settings size={18} />
+                                <span className="text-sm font-medium hidden lg:block">{t('settings')}</span>
+                            </button>
                             <button
                                 onClick={signOut}
-                                className="w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all font-medium"
+                                className="flex-1 flex items-center justify-center lg:justify-start gap-2 p-2 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all"
+                                title={t('sign_out')}
                             >
-                                <LogOut size={20} />
-                                <span className="hidden lg:block">{t('sign_out') || 'Sign Out'}</span>
+                                <LogOut size={18} />
+                                <span className="text-sm font-medium hidden lg:block">{t('sign_out')}</span>
                             </button>
                         </div>
                     </div>
@@ -941,17 +964,7 @@ const Dashboard = () => {
                 </main>
 
 
-                {/* Floating Settings Button - Portalled to body to avoid transform stacking context issues */}
-                {createPortal(
-                    <button
-                        onClick={() => setShowSettings(true)}
-                        className="fixed bottom-6 left-6 z-50 p-4 bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20 rounded-full hover:scale-110 transition-all duration-300 animate-pop"
-                        title={t('settings')}
-                    >
-                        <Settings size={24} />
-                    </button>,
-                    document.body
-                )}
+
 
                 {/* Settings Modal */}
                 {showSettings && createPortal(
