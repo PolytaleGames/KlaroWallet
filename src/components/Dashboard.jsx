@@ -204,14 +204,15 @@ const Dashboard = () => {
     useEffect(() => {
         const handleKeyDown = (event) => {
             if (event.ctrlKey || event.metaKey) {
-                if (event.key === 'z') {
+                const key = event.key.toLowerCase();
+                if (key === 'z') {
                     event.preventDefault();
                     if (event.shiftKey) {
                         redo();
                     } else {
                         undo();
                     }
-                } else if (event.key === 'y') {
+                } else if (key === 'y') {
                     event.preventDefault();
                     redo();
                 }
