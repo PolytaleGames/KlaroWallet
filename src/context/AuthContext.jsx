@@ -58,7 +58,8 @@ export const AuthProvider = ({ children }) => {
             loading,
             signUp,
             signIn,
-            signOut
+            signOut,
+            loginAsGuest: () => setUser({ id: 'guest', email: 'demo@guest.com', isGuest: true })
         }}>
             {!loading && children}
         </AuthContext.Provider>

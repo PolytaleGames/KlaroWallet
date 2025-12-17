@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 
 const LoginPage = () => {
-    const { signIn, signUp } = useAuth();
+    const { signIn, signUp, loginAsGuest } = useAuth();
     const { t } = useTranslation();
     const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState('');
@@ -108,12 +108,26 @@ const LoginPage = () => {
                         </button>
                     </form>
 
-                    <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-700 flex justify-center">
+                    <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-700 flex flex-col gap-4 justify-center items-center">
                         <button
                             onClick={() => setIsLogin(!isLogin)}
                             className="text-sm text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 font-medium transition-colors"
                         >
                             {isLogin ? "No account yet? Create one" : "Already have an account? Log In"}
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                setLoading(true);
+                                // Small artificial delay for UX
+                                setTimeout(() => {
+                                    loginAsGuest();
+                                    setLoading(false);
+                                }, 500);
+                            }}
+                            className="text-xs text-indigo-500 hover:text-indigo-600 font-bold bg-indigo-50 dark:bg-indigo-900/30 px-4 py-2 rounded-full transition-colors"
+                        >
+                            ✨ Try Demo Mode (No Setup)
                         </button>
                     </div>
                 </div>

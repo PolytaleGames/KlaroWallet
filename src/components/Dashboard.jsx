@@ -569,6 +569,18 @@ const Dashboard = () => {
                         </div>
                     </div>
 
+                    {user?.isGuest && (
+                        <div className="mb-6 p-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4">
+                            <div className="p-2 bg-indigo-100 dark:bg-indigo-800 rounded-lg text-indigo-600 dark:text-indigo-300">
+                                <AlertCircle size={20} />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-indigo-900 dark:text-indigo-200">Demo Mode Active</h4>
+                                <p className="text-xs text-indigo-700 dark:text-indigo-300">Your data is saved locally on this device only. Create an account to sync across devices.</p>
+                            </div>
+                        </div>
+                    )}
+
                     {activeTab === 'overview' && (
                         <div className="animate-reveal space-y-8">
                             <header className="flex justify-between items-end">
