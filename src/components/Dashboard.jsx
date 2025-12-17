@@ -487,13 +487,19 @@ const Dashboard = () => {
         <ErrorBoundary>
             <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex font-sans text-slate-900 dark:text-white">
                 {/* Sidebar */}
-                <aside className="w-20 lg:w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col fixed h-full z-20 transition-all duration-300">
-                    <div className="p-6 flex items-center justify-center lg:justify-start gap-3">
-                        <div className="w-8 h-8 bg-slate-900 dark:bg-indigo-500 rounded-xl flex items-center justify-center text-white font-bold text-lg">K</div>
-                        <span className="font-bold text-xl hidden lg:block dark:text-white">Klaro</span>
+                <aside className={`fixed lg:relative inset-y-0 left-0 z-40 w-72 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 transform transition-transform duration-300 ease-in-out ${showMobileMenu ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} flex flex-col`}>
+                    <div className="p-6">
+                        <div className="flex items-center gap-3 mb-8">
+                            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/20">
+                                <span className="text-white font-bold text-xl">K</span>
+                            </div>
+                            <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300">
+                                KlaroWallet
+                            </h1>
+                        </div>
                     </div>
 
-                    <nav className="flex-1 px-4 space-y-2 mt-6">
+                    <nav className="space-y-2 px-4 pb-24 overflow-y-auto custom-scrollbar"> {/* Added padding bottom and overflow */}
                         <button onClick={() => setActiveTab('overview')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'overview' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}>
                             <LayoutDashboard size={20} />
                             <span className="font-medium hidden lg:block">{t('overview')}</span>
@@ -520,38 +526,43 @@ const Dashboard = () => {
                         </button>
                     </nav>
 
-                    <div className="p-4 border-t border-slate-200 dark:border-slate-700 mt-auto space-y-4">
+                    {/* Compact Floating Footer */}
+                    <div className="absolute bottom-4 left-4 right-4 p-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg flex items-center justify-between gap-2 overflow-hidden">
+
+                        {/* User Info - Compact */}
                         {user && (
-                            <div className="flex items-center gap-3 px-2">
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs shadow-md">
+                            <div className="flex items-center gap-3 min-w-0 overflow-hidden flex-1">
+                                <div className="shrink-0 w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm shadow-md ring-2 ring-white dark:ring-slate-800">
                                     {user.email?.charAt(0).toUpperCase()}
                                 </div>
-                                <div className="flex-1 min-w-0 hidden lg:block">
-                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate" title={user.email}>{user.email}</p>
-                                    <p className="text-[10px] text-emerald-500 font-medium flex items-center gap-1">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                                        Online
+                                <div className="flex flex-col min-w-0">
+                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate max-w-[120px]" title={user.email}>
+                                        {user.isGuest ? 'Guest' : user.email?.split('@')[0]}
                                     </p>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Online</span>
+                                    </div>
                                 </div>
                             </div>
                         )}
 
-                        <div className="flex gap-2">
+                        {/* Actions - Icon Only Row */}
+                        <div className="flex items-center gap-1 shrink-0 bg-slate-100 dark:bg-slate-700/50 p-1 rounded-lg">
                             <button
                                 onClick={() => setShowSettings(true)}
-                                className="flex-1 flex items-center justify-center lg:justify-start gap-2 p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700/50 transition-all"
+                                className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-white dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-600 rounded-md transition-all sm:tooltip"
                                 title={t('settings')}
                             >
                                 <Settings size={18} />
-                                <span className="text-sm font-medium hidden lg:block">{t('settings')}</span>
                             </button>
+                            <div className="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-0.5"></div>
                             <button
                                 onClick={signOut}
-                                className="flex-1 flex items-center justify-center lg:justify-start gap-2 p-2 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all"
+                                className="p-2 text-rose-400 hover:text-rose-600 hover:bg-white dark:hover:text-rose-400 dark:hover:bg-slate-600 rounded-md transition-all"
                                 title={t('sign_out')}
                             >
                                 <LogOut size={18} />
-                                <span className="text-sm font-medium hidden lg:block">{t('sign_out')}</span>
                             </button>
                         </div>
                     </div>
