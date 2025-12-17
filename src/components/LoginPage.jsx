@@ -31,18 +31,18 @@ const LoginPage = () => {
             } else {
                 // Validation for Sign Up
                 if (password !== confirmPassword) {
-                    throw new Error("Passwords do not match");
+                    throw new Error(t('passwords_do_not_match'));
                 }
                 if (password.length < 6) {
-                    throw new Error("Password must be at least 6 characters");
+                    throw new Error(t('password_min_length'));
                 }
                 await signUp(email, password);
-                setError('Account created! Please check your email to confirm before logging in.');
+                setError(t('account_created_check_email'));
                 setIsLogin(true); // Switch back to login for UX
             }
         } catch (err) {
             console.error(err);
-            setError(err.message || "Authentication failed");
+            setError(err.message || t('auth_failed'));
         } finally {
             setLoading(false);
         }
@@ -68,7 +68,7 @@ const LoginPage = () => {
                             <span className="text-3xl font-bold text-slate-900">K</span>
                         </div>
                         <h1 className="text-2xl font-bold text-white mb-1">KlaroWallet</h1>
-                        <p className="text-slate-300 text-sm">Your Personal Finance Fortress</p>
+                        <p className="text-slate-300 text-sm">{t('login_title')}</p>
                     </div>
 
                     {/* Background Pattern */}
@@ -88,7 +88,7 @@ const LoginPage = () => {
 
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Email Address</label>
+                            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{t('email_address')}</label>
                             <div className="relative">
                                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                 <input
@@ -103,7 +103,7 @@ const LoginPage = () => {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Password</label>
+                            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{t('password')}</label>
                             <div className="relative">
                                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                 <input
@@ -127,7 +127,7 @@ const LoginPage = () => {
 
                         {!isLogin && (
                             <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
-                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Confirm Password</label>
+                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{t('confirm_password')}</label>
                                 <div className="relative">
                                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                     <input
@@ -141,7 +141,7 @@ const LoginPage = () => {
                                     />
                                 </div>
                                 {confirmPassword && confirmPassword !== password && (
-                                    <p className="text-xs text-rose-500 font-medium">Passwords do not match</p>
+                                    <p className="text-xs text-rose-500 font-medium">{t('passwords_do_not_match')}</p>
                                 )}
                             </div>
                         )}
@@ -154,7 +154,7 @@ const LoginPage = () => {
                             {loading ? (
                                 <Loader2 className="animate-spin" size={20} />
                             ) : (
-                                isLogin ? <><LogIn size={20} /> Access Dashboard</> : <><UserPlus size={20} /> Create Account</>
+                                isLogin ? <><LogIn size={20} /> {t('access_dashboard')}</> : <><UserPlus size={20} /> {t('create_account')}</>
                             )}
                         </button>
                     </form>
@@ -164,7 +164,7 @@ const LoginPage = () => {
                             onClick={() => setIsLogin(!isLogin)}
                             className="text-sm text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 font-medium transition-colors"
                         >
-                            {isLogin ? "No account yet? Create one" : "Already have an account? Log In"}
+                            {isLogin ? t('no_account') : t('already_has_account')}
                         </button>
 
                         <button
@@ -178,7 +178,7 @@ const LoginPage = () => {
                             }}
                             className="text-xs text-indigo-500 hover:text-indigo-600 font-bold bg-indigo-50 dark:bg-indigo-900/30 px-4 py-2 rounded-full transition-colors"
                         >
-                            ✨ Try Demo Mode (No Setup)
+                            {t('try_demo_mode')}
                         </button>
                     </div>
                 </div>

@@ -590,8 +590,8 @@ const Dashboard = () => {
                                 <AlertCircle size={20} />
                             </div>
                             <div>
-                                <h4 className="text-sm font-bold text-indigo-900 dark:text-indigo-200">Demo Mode Active</h4>
-                                <p className="text-xs text-indigo-700 dark:text-indigo-300">Your data is saved locally on this device only. Create an account to sync across devices.</p>
+                                <h4 className="text-sm font-bold text-indigo-900 dark:text-indigo-200">{t('demo_mode_active')}</h4>
+                                <p className="text-xs text-indigo-700 dark:text-indigo-300">{t('demo_mode_desc')}</p>
                             </div>
                         </div>
                     )}

@@ -213,5 +213,22 @@
     "interval_every": "Every",
     "interval_months_unit": "months",
     "define_event_details": "Define the details of this financial movement.",
-    "sign_out": "Sign Out"
+    "sign_out": "Sign Out",
+    "login_title": "Your Personal Finance Fortress",
+    "email_address": "Email Address",
+    "password": "Password",
+    "confirm_password": "Confirm Password",
+    "passwords_do_not_match": "Passwords do not match",
+    "password_min_length": "Password must be at least 6 characters",
+    "access_dashboard": "Access Dashboard",
+    "create_account": "Create Account",
+    "no_account": "No account yet? Create one",
+    "already_has_account": "Already have an account? Log In",
+    "try_demo_mode": "✨ Try Demo Mode (No Setup)",
+    "account_created_check_email": "Account created! Please check your email to confirm before logging in.",
+    "auth_failed": "Authentication failed",
+    "demo_mode_active": "Demo Mode Active",
+    "demo_mode_desc": "Your data is saved locally on this device only. Create an account to sync across devices.",
+    "guest": "Guest",
+    "online": "Online"
 }

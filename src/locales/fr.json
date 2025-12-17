@@ -213,5 +213,22 @@
     "interval_every": "Tous les",
     "interval_months_unit": "mois",
     "define_event_details": "Définissez les détails de ce mouvement financier.",
-    "sign_out": "Déconnexion"
+    "sign_out": "Déconnexion",
+    "login_title": "Votre Forteresse Financière",
+    "email_address": "Adresse Email",
+    "password": "Mot de passe",
+    "confirm_password": "Confirmer le mot de passe",
+    "passwords_do_not_match": "Les mots de passe ne correspondent pas",
+    "password_min_length": "Le mot de passe doit contenir au moins 6 caractères",
+    "access_dashboard": "Accéder au tableau de bord",
+    "create_account": "Créer un compte",
+    "no_account": "Pas encore de compte ? Créer un compte",
+    "already_has_account": "Déjà un compte ? Se connecter",
+    "try_demo_mode": "✨ Essayer le mode démo (Sans compte)",
+    "account_created_check_email": "Compte créé ! Veuillez vérifier votre email pour confirmer avant de vous connecter.",
+    "auth_failed": "Authentification échouée",
+    "demo_mode_active": "Mode Démo Actif",
+    "demo_mode_desc": "Vos données sont enregistrées localement sur cet appareil uniquement. Créez un compte pour synchroniser.",
+    "guest": "Invité",
+    "online": "En ligne"
 }
