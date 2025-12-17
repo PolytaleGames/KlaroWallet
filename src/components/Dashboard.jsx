@@ -629,7 +629,21 @@ const Dashboard = () => {
                             {/* Projection Chart */}
                             <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm relative z-0 animate-fade delay-300">
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 relative z-30">
-                                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('wealth_projection')}</h3>
+                                    <div className="flex flex-col md:flex-row md:items-center gap-4">
+                                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('wealth_projection')}</h3>
+                                        <div className="flex items-center gap-3 text-xs font-medium text-slate-500 dark:text-slate-400">
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="w-3 h-3 rounded-full bg-gradient-to-r from-rose-500 to-emerald-500"></div>
+                                                {t('net_worth')}
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="w-3 h-3 rounded bg-slate-200 dark:bg-slate-700 border border-dashed border-slate-400 relative overflow-hidden">
+                                                    <div className="absolute inset-0 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSJtYXdlbnRhIiBmaWxsLW9wYWNpdHk9IjAuMSIvPgo8cGF0aCBkPSJNLTENjUwTDUgMCIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIxIi8+Cjwvc3ZnPg==')]"></div>
+                                                </div>
+                                                {t('asset_cash')}
+                                            </div>
+                                        </div>
+                                    </div>
 
                                     <div className="flex bg-white dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 items-center gap-4 shadow-sm">
                                         <div className="relative" ref={yieldPopupRef}>
@@ -714,6 +728,10 @@ const Dashboard = () => {
                                                     <stop offset={off} stopColor={off <= 0 ? "#f43f5e" : "#10b981"} stopOpacity={0.3} />
                                                     <stop offset={off} stopColor={off >= 1 ? "#10b981" : "#f43f5e"} stopOpacity={0.3} />
                                                 </linearGradient>
+                                                {/* Hatched Pattern for Cash */}
+                                                <pattern id="diagonalHatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                                                    <rect x="0" y="0" width="2" height="8" fill={theme === 'dark' ? '#94a3b8' : '#64748b'} fillOpacity="0.1" />
+                                                </pattern>
                                             </defs>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#334155' : '#f1f5f9'} />
                                             <XAxis
@@ -773,6 +791,16 @@ const Dashboard = () => {
                                                 }}
                                             />
                                             <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="3 3" />
+                                            {/* Cash Overlay Area */}
+                                            <Area
+                                                type="monotone"
+                                                dataKey="cash"
+                                                stroke={theme === 'dark' ? '#94a3b8' : '#64748b'}
+                                                strokeWidth={2}
+                                                strokeDasharray="4 4"
+                                                fill="url(#diagonalHatch)"
+                                                animationDuration={300}
+                                            />
                                             <Area
                                                 type="monotone"
                                                 dataKey="NetWorth"
