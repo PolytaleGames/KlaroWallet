@@ -500,7 +500,7 @@ const Dashboard = () => {
                         </div>
                     </div>
 
-                    <nav className="space-y-2 px-4 pb-24 overflow-y-auto custom-scrollbar"> {/* Added padding bottom and overflow */}
+                    <nav className="flex-1 min-h-0 space-y-2 px-4 pb-24 overflow-y-auto custom-scrollbar"> {/* Added flex-1 and min-h-0 to take remaining space */}
                         <button onClick={() => setActiveTab('overview')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'overview' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}>
                             <LayoutDashboard size={20} />
                             <span className="font-medium hidden lg:block">{t('overview')}</span>
