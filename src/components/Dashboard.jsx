@@ -315,6 +315,8 @@ const Dashboard = () => {
         const yields = data.assetYields || { stock: 7, crypto: 5, real_estate: 3, metal: 2, cash: 0, other: 0 };
 
 
+        let savingsUsed = false;
+
         // Simulation Loop
         for (let i = 0; i <= projectionMonths; i++) {
             const date = new Date(today.getFullYear(), today.getMonth() + i, 1);
@@ -368,26 +370,44 @@ const Dashboard = () => {
                     buckets[key] += buckets[key] * monthlyRate;
                 });
 
-                // E. Inject Investment
-                const amountToInvest = Math.min(Math.max(0, netCashFlow), investmentGoal);
-                const amountToCash = Math.max(0, netCashFlow - investmentGoal);
+                // E. Flow & Investment Logic (Refactored to allow investing from Cash savings)
 
-                // Distribute Investment Amount based on Targets
-                ['stock', 'crypto', 'metal', 'cash'].forEach(key => { // Only liquid targets
-                    const targetShare = (targets[key] || 0) / totalTarget;
-                    const investedAmount = amountToInvest * targetShare;
-                    buckets[key] += investedAmount;
-                    basis[key] += investedAmount; // Basis grows by contribution
-                });
+                // 1. Apply Net Cash Flow to Cash Bucket (Income deposits, Expenses withdraw)
+                buckets['cash'] += netCashFlow;
+                basis['cash'] += netCashFlow;
 
-                // Savings (Surplus) goes to Cash
-                buckets['cash'] += amountToCash;
-                basis['cash'] += amountToCash; // Cash basis grows 1:1
+                // 2. Execute Investment Plan from Available Cash
+                // We only invest if we have positive cash (we don't borrow to invest)
+                const availableForInvestment = Math.max(0, buckets['cash']);
+                const amountToInvest = Math.min(availableForInvestment, investmentGoal);
 
-                // Handle Deficits? If NetCashFlow < 0, subtract from Cash?
-                if (netCashFlow < 0) {
-                    buckets['cash'] += netCashFlow; // Reduces cash
-                    basis['cash'] += netCashFlow;   // Reduces basis
+                if (amountToInvest > 0) {
+                    // Withdraw from Cash
+                    buckets['cash'] -= amountToInvest;
+                    basis['cash'] -= amountToInvest;
+
+                    // Distribute to Targets
+                    ['stock', 'crypto', 'metal', 'cash'].forEach(key => { // Only liquid targets
+                        const targetShare = (targets[key] || 0) / totalTarget;
+                        const investedAmount = amountToInvest * targetShare;
+                        buckets[key] += investedAmount;
+                        basis[key] += investedAmount;
+                    });
+                }
+
+                // Check if we dipped into savings
+                // (If we invested more than we earned this month)
+                if (netCashFlow < amountToInvest) {
+                    // Differentiate cause: Structural vs Event
+                    const structuralSurplus = monthlyIncome - monthlyExpenses - monthlyDebtPayments;
+
+                    if (structuralSurplus < amountToInvest) {
+                        // Even without events, we don't have enough -> BAD
+                        if (savingsUsed !== 'structural') savingsUsed = 'structural';
+                    } else {
+                        // We have enough surplus usually, but events dragged us down -> INFO
+                        if (savingsUsed !== 'structural') savingsUsed = 'event';
+                    }
                 }
             }
 
@@ -417,7 +437,9 @@ const Dashboard = () => {
                 totalInterest: totalInterest,
                 monthlySurplus: monthlyIncome - monthlyExpenses - currentDebts.reduce((sum, d) => sum + d.monthlyCost, 0),
                 savingsRate: monthlyIncome > 0 ? ((monthlyIncome - monthlyExpenses - currentDebts.reduce((sum, d) => sum + d.monthlyCost, 0) + investmentGoal) / monthlyIncome) * 100 : 0,
-                finalBuckets
+                finalBuckets,
+                monthlyIncome, // Expose for UI threshold
+                savingsUsed // Expose warning flag (false, 'structural', 'event')
             }
         };
 
@@ -533,7 +555,24 @@ const Dashboard = () => {
 
                             {/* Final Projection Breakdown Section */}
                             <div>
-                                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">{t('future_portfolio_composition')}</h3>
+                                <div className="flex items-center gap-4 mb-4">
+                                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('future_portfolio_composition')}</h3>
+
+                                    {/* Yellow Warning if Savings Used */}
+                                    {projection.stats.savingsUsed && (
+                                        <div className={cn(
+                                            "px-3 py-1 rounded-lg text-xs font-bold border flex items-center gap-2 animate-pulse",
+                                            projection.stats.savingsUsed === 'structural'
+                                                ? "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-700/50"
+                                                : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-700/50"
+                                        )}>
+                                            {projection.stats.savingsUsed === 'structural'
+                                                ? t('savings_used_structural')
+                                                : t('savings_used_event')}
+                                        </div>
+                                    )}
+                                </div>
+
                                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                                     {/* Future Net Worth Card - NEW */}
                                     <div className="bg-slate-900 dark:bg-indigo-600 text-white p-4 rounded-2xl shadow-lg flex flex-col justify-between transform scale-[1.02] ring-2 ring-emerald-500/50">
@@ -554,17 +593,32 @@ const Dashboard = () => {
                                         const initialVal = (data.assets || []).filter(a => a.type === type).reduce((sum, a) => sum + (Number(a.value) || 0), 0);
                                         const growth = finalVal - initialVal;
 
+                                        // Low Cash Logic
+                                        const isLowCash = type === 'cash' && finalVal < (projection.stats.monthlyIncome || 0);
+
                                         return (
-                                            <div key={type} className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+                                            <div key={type} className={cn(
+                                                "p-4 rounded-2xl border shadow-sm flex flex-col justify-between transition-all",
+                                                isLowCash
+                                                    ? "bg-rose-50 dark:bg-rose-900/10 border-rose-500 dark:border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.3)]"
+                                                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                                            )}>
                                                 <div>
-                                                    <p className="text-xs font-bold text-slate-400 uppercase mb-1">{t(`asset_${type}`)}</p>
-                                                    <p className="text-lg font-bold text-slate-900 dark:text-white">{finalVal.toLocaleString()}€</p>
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <p className={cn("text-xs font-bold uppercase", isLowCash ? "text-rose-600 dark:text-rose-400" : "text-slate-400")}>{t(`asset_${type}`)}</p>
+                                                        {isLowCash && (
+                                                            <span className="bg-rose-500 text-white text-[10px] uppercase font-bold px-1.5 py-0.5 rounded shadow-sm animate-pulse">
+                                                                {t('low_cash_warning')}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className={cn("text-lg font-bold", isLowCash ? "text-rose-700 dark:text-rose-300" : "text-slate-900 dark:text-white")}>{finalVal.toLocaleString()}€</p>
                                                 </div>
                                                 <div className="flex items-center gap-1 mt-2 text-xs">
                                                     <span className={cn("font-bold", growth >= 0 ? "text-emerald-500" : "text-rose-500")}>
                                                         {growth >= 0 ? '+' : ''}{growth.toLocaleString()}€
                                                     </span>
-                                                    <span className="text-slate-400">{t('in_months', { count: projectionMonths })}</span>
+                                                    <span className={cn(isLowCash ? "text-rose-400/70" : "text-slate-400")}>{t('in_months', { count: projectionMonths })}</span>
                                                 </div>
                                             </div>
                                         );

@@ -192,5 +192,8 @@
     "warren_advice_active": "\"Que l'on parle de chaussettes ou d'actions, j'aime acheter de la qualité quand les prix sont marqués à la baisse.\" - Renforcez vos piliers dans la baisse.",
     "warning_falling_knife": "Risque Élevé : Cet actif a fortement chuté (>30%). Renforcez avec prudence.",
     "fixed_dca": "DCA Fixe",
-    "active": "ACTIF"
+    "active": "ACTIF",
+    "low_cash_warning": "BAS",
+    "savings_used_structural": "⚠️ Alerte Trésorerie : L'investissement dépasse le surplus régulier.",
+    "savings_used_event": "ℹ️ Impact Événement : L'épargne a été utilisée ponctuellement pour couvrir vos événements."
 }

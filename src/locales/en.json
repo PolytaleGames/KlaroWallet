@@ -192,5 +192,8 @@
     "warren_advice_active": "\"Whether we're talking about socks or stocks, I like buying quality merchandise when it is marked down.\" - Reinforce your winners on the dip.",
     "warning_falling_knife": "High Risk: This asset has dropped significantly (>30%). Reinforce with caution.",
     "fixed_dca": "Fixed DCA",
-    "active": "ACTIVE"
+    "active": "ACTIVE",
+    "low_cash_warning": "LOW",
+    "savings_used_structural": "⚠️ Cash Burn Alert: Monthly investment exceeds regular surplus.",
+    "savings_used_event": "ℹ️ Planned Impact: Savings were temporarily used to cover planned events."
 }
