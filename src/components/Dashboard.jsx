@@ -488,7 +488,7 @@ const Dashboard = () => {
         <ErrorBoundary>
             <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex font-sans text-slate-900 dark:text-white">
                 {/* Sidebar */}
-                <aside className={`fixed lg:relative inset-y-0 left-0 z-40 w-72 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 transform transition-transform duration-300 ease-in-out ${showMobileMenu ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} flex flex-col`}>
+                <aside className={`h-screen sticky top-0 left-0 z-40 w-72 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 transform transition-transform duration-300 ease-in-out ${showMobileMenu ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} flex flex-col shrink-0`}>
                     <div className="p-6">
                         <div className="flex items-center gap-3 mb-8">
                             <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/20">
@@ -570,7 +570,8 @@ const Dashboard = () => {
                 </aside>
 
                 {/* Main Content */}
-                <main className="flex-1 ml-20 lg:ml-64 p-8 transition-all duration-300 relative">
+                {/* Main Content */}
+                <main className="flex-1 min-w-0 p-8 transition-all duration-300 relative">
                     {/* Header with Save Status - Overlay */}
                     <div className="absolute top-4 right-8 z-10 pointer-events-none">
                         <div className={`flex items-center gap-2 text-sm font-medium transition-opacity duration-500 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm border border-slate-100 dark:border-slate-700 ${saveStatus === 'idle' ? 'opacity-0' : 'opacity-100'}`}>
