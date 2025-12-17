@@ -486,9 +486,9 @@ const Dashboard = () => {
 
     return (
         <ErrorBoundary>
-            <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex font-sans text-slate-900 dark:text-white">
+            <div className="h-screen overflow-hidden bg-slate-50 dark:bg-slate-900 flex font-sans text-slate-900 dark:text-white">
                 {/* Sidebar */}
-                <aside className={`fixed inset-y-0 left-0 z-40 w-72 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 transform transition-transform duration-300 ease-in-out ${showMobileMenu ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} flex flex-col`}>
+                <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-72 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 transform transition-transform duration-300 ease-in-out ${showMobileMenu ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} flex flex-col shrink-0`}>
                     <div className="p-6">
                         <div className="flex items-center gap-3 mb-8">
                             <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/20">
@@ -500,7 +500,7 @@ const Dashboard = () => {
                         </div>
                     </div>
 
-                    <nav className="flex-1 min-h-0 space-y-2 px-4 pb-24 overflow-y-auto custom-scrollbar"> {/* Added flex-1 and min-h-0 to take remaining space */}
+                    <nav className="flex-1 min-h-0 space-y-2 px-4 pb-4 overflow-y-auto custom-scrollbar">
                         <button onClick={() => setActiveTab('overview')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'overview' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}>
                             <LayoutDashboard size={20} />
                             <span className="font-medium hidden lg:block">{t('overview')}</span>
@@ -527,51 +527,53 @@ const Dashboard = () => {
                         </button>
                     </nav>
 
-                    {/* Compact Floating Footer */}
-                    <div className="absolute bottom-4 left-4 right-4 p-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg flex items-center justify-between gap-2 overflow-hidden">
+                    {/* Compact Footer - Static Flex Item */}
+                    <div className="p-4 z-10 shrink-0">
+                        <div className="p-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg flex items-center justify-between gap-2 overflow-hidden">
 
-                        {/* User Info - Compact */}
-                        {user && (
-                            <div className="flex items-center gap-3 min-w-0 overflow-hidden flex-1">
-                                <div className="shrink-0 w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm shadow-md ring-2 ring-white dark:ring-slate-800">
-                                    {user.email?.charAt(0).toUpperCase()}
-                                </div>
-                                <div className="flex flex-col min-w-0">
-                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate max-w-[120px]" title={user.email}>
-                                        {user.isGuest ? 'Guest' : user.email?.split('@')[0]}
-                                    </p>
-                                    <div className="flex items-center gap-1.5">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Online</span>
+                            {/* User Info - Compact */}
+                            {user && (
+                                <div className="flex items-center gap-3 min-w-0 overflow-hidden flex-1">
+                                    <div className="shrink-0 w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm shadow-md ring-2 ring-white dark:ring-slate-800">
+                                        {user.email?.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="flex flex-col min-w-0">
+                                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate max-w-[120px]" title={user.email}>
+                                            {user.isGuest ? 'Guest' : user.email?.split('@')[0]}
+                                        </p>
+                                        <div className="flex items-center gap-1.5">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Online</span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {/* Actions - Icon Only Row */}
-                        <div className="flex items-center gap-1 shrink-0 bg-slate-100 dark:bg-slate-700/50 p-1 rounded-lg">
-                            <button
-                                onClick={() => setShowSettings(true)}
-                                className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-white dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-600 rounded-md transition-all sm:tooltip"
-                                title={t('settings')}
-                            >
-                                <Settings size={18} />
-                            </button>
-                            <div className="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-0.5"></div>
-                            <button
-                                onClick={signOut}
-                                className="p-2 text-rose-400 hover:text-rose-600 hover:bg-white dark:hover:text-rose-400 dark:hover:bg-slate-600 rounded-md transition-all"
-                                title={t('sign_out')}
-                            >
-                                <LogOut size={18} />
-                            </button>
+                            {/* Actions - Icon Only Row */}
+                            <div className="flex items-center gap-1 shrink-0 bg-slate-100 dark:bg-slate-700/50 p-1 rounded-lg">
+                                <button
+                                    onClick={() => setShowSettings(true)}
+                                    className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-white dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-600 rounded-md transition-all sm:tooltip"
+                                    title={t('settings')}
+                                >
+                                    <Settings size={18} />
+                                </button>
+                                <div className="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-0.5"></div>
+                                <button
+                                    onClick={signOut}
+                                    className="p-2 text-rose-400 hover:text-rose-600 hover:bg-white dark:hover:text-rose-400 dark:hover:bg-slate-600 rounded-md transition-all"
+                                    title={t('sign_out')}
+                                >
+                                    <LogOut size={18} />
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </aside>
 
                 {/* Main Content */}
                 {/* Main Content */}
-                <main className="flex-1 min-w-0 lg:ml-72 p-8 transition-all duration-300 relative">
+                <main className="flex-1 min-w-0 h-full overflow-y-auto p-8 relative scroll-smooth focus:scroll-auto">
                     {/* Header with Save Status - Overlay */}
                     <div className="absolute top-4 right-8 z-10 pointer-events-none">
                         <div className={`flex items-center gap-2 text-sm font-medium transition-opacity duration-500 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm border border-slate-100 dark:border-slate-700 ${saveStatus === 'idle' ? 'opacity-0' : 'opacity-100'}`}>
