@@ -134,6 +134,7 @@ export const persistenceService = {
                     content: payload,
                     updated_at: new Date().toISOString()
                 });
+                console.log("✅ Data synced to Cloud (Supabase)");
             }
         } catch (e) {
             console.warn("Supabase save failed", e);

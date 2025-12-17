@@ -33,10 +33,23 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+import { useAuth } from './context/AuthContext';
+import LoginPage from './components/LoginPage';
+
 function App() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   return (
     <ErrorBoundary>
-      <Dashboard />
+      {user ? <Dashboard /> : <LoginPage />}
     </ErrorBoundary>
   )
 }
