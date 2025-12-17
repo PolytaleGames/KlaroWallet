@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
@@ -17,9 +17,41 @@ import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import useHistory from '../hooks/useHistory';
 
+
 function cn(...inputs) {
     return twMerge(clsx(inputs));
 }
+
+class ErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+
+    static getDerivedStateFromError(error) {
+        return { hasError: true, error };
+    }
+
+    componentDidCatch(error, errorInfo) {
+        console.error("Uncaught error:", error, errorInfo);
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="p-8 text-rose-600">
+                    <h1 className="text-2xl font-bold mb-4">Something went wrong.</h1>
+                    <pre className="bg-slate-100 p-4 rounded text-sm overflow-auto">
+                        {this.state.error?.toString()}
+                    </pre>
+                </div>
+            );
+        }
+
+        return this.props.children;
+    }
+}
+
 
 const Dashboard = () => {
     const { t, i18n } = useTranslation();
@@ -44,35 +76,88 @@ const Dashboard = () => {
         };
     }, []);
 
-    // Unified State with History
-    const {
-        state: data,
-        set: setData,
-        undo,
-        redo,
-
-        reset: resetData
-    } = useHistory({
-        assets: [],
-        budget: {
-            values: {},
-            incomeCategories: [
-                { id: 'inc_salary', name: 'Salary', icon: 'Briefcase' },
-                { id: 'inc_bonus', name: 'Bonus', icon: 'Star' }
-            ],
-            expenseCategories: [
-                { id: 'exp_rent', name: 'Rent', icon: 'Home' },
-                { id: 'exp_food', name: 'Groceries', icon: 'ShoppingCart' }
-            ]
-        },
-        debts: [],
-        events: [], // Future events
-        investmentGoal: 0,
-        investmentTargets: { stock: 50, crypto: 30, metal: 10, cash: 10 },
-        investmentStrategy: 'active',
-        assetYields: { stock: 7, crypto: 5, real_estate: 3, metal: 2, cash: 0, other: 0 },
-        settings: { currency: 'EUR' }
+    // Unified State with Per-Page History
+    // Slice 1: Budget
+    const budgetH = useHistory({
+        values: {},
+        incomeCategories: [
+            { id: 'inc_salary', name: 'Salary', icon: 'Briefcase' },
+            { id: 'inc_bonus', name: 'Bonus', icon: 'Star' }
+        ],
+        expenseCategories: [
+            { id: 'exp_rent', name: 'Rent', icon: 'Home' },
+            { id: 'exp_food', name: 'Groceries', icon: 'ShoppingCart' }
+        ]
     });
+
+    // Slice 2: Assets
+    const assetsH = useHistory([]);
+
+    // Slice 3: Debts
+    const debtsH = useHistory([]);
+
+    // Slice 4: Planning (Events)
+    const eventsH = useHistory([]);
+
+    // Slice 5: Investment (Goal, Targets, Strategy)
+    const investH = useHistory({
+        goal: 0,
+        targets: { stock: 50, crypto: 30, metal: 10, cash: 10 },
+        strategy: 'active'
+    });
+
+    // Slice 6: Global Settings (Currency, Yields)
+    const settingsH = useHistory({
+        currency: 'EUR',
+        assetYields: { stock: 7, crypto: 5, real_estate: 3, metal: 2, cash: 0, other: 0 }
+    });
+
+    // Derived Full Data Object (for persistence and props consistency)
+    const data = useMemo(() => ({
+        budget: budgetH.state,
+        assets: assetsH.state,
+        debts: debtsH.state,
+        events: eventsH.state,
+        investmentGoal: investH.state.goal,
+        investmentTargets: investH.state.targets,
+        investmentStrategy: investH.state.strategy,
+        settings: { currency: settingsH.state.currency },
+        assetYields: settingsH.state.assetYields
+    }), [budgetH.state, assetsH.state, debtsH.state, eventsH.state, investH.state, settingsH.state]);
+
+    // Active History Selector
+    const activeHistory = useMemo(() => {
+        switch (activeTab) {
+            case 'budget': return budgetH;
+            case 'assets': return assetsH;
+            case 'debts': return debtsH;
+            case 'planning': return eventsH;
+            case 'invest': return investH;
+            case 'overview': return null; // No undo on overview main page (or maybe settings?)
+            default: return null;
+        }
+    }, [activeTab, budgetH, assetsH, debtsH, eventsH, investH]);
+
+    const undo = useCallback(() => activeHistory?.undo(), [activeHistory]);
+    const redo = useCallback(() => activeHistory?.redo(), [activeHistory]);
+    // const canUndo = activeHistory?.canUndo;
+    // const canRedo = activeHistory?.canRedo;
+
+    const resetData = (newData) => {
+        budgetH.reset(newData.budget || { values: {}, incomeCategories: [], expenseCategories: [] });
+        assetsH.reset(newData.assets || []);
+        debtsH.reset(newData.debts || []);
+        eventsH.reset(newData.events || []);
+        investH.reset({
+            goal: newData.investmentGoal || 0,
+            targets: newData.investmentTargets || { stock: 50, crypto: 30, metal: 10, cash: 10 },
+            strategy: newData.investmentStrategy || 'active'
+        });
+        settingsH.reset({
+            currency: newData.settings?.currency || 'EUR',
+            assetYields: newData.assetYields || { stock: 7, crypto: 5, real_estate: 3, metal: 2, cash: 0, other: 0 }
+        });
+    };
 
     const [isLoading, setIsLoading] = useState(true);
     const [saveStatus, setSaveStatus] = useState('idle'); // idle, saving, saved, error
@@ -161,23 +246,20 @@ const Dashboard = () => {
     const [projectionYield, setProjectionYield] = useState(5); // Annual Yield %
 
     const updateAssets = (newAssets) => {
-        setData({ ...data, assets: newAssets });
+        assetsH.set(newAssets);
     };
 
     // Event Handlers
     const handleAddEvent = (event) => {
-        setData({ ...data, events: [...(data.events || []), event] });
+        eventsH.set([...(eventsH.state || []), event]);
     };
 
     const handleRemoveEvent = (id) => {
-        setData({ ...data, events: data.events.filter(e => e.id !== id) });
+        eventsH.set(eventsH.state.filter(e => e.id !== id));
     };
 
     const handleUpdateEvent = (updatedEvent) => {
-        setData({
-            ...data,
-            events: data.events.map(e => e.id === updatedEvent.id ? updatedEvent : e)
-        });
+        eventsH.set(eventsH.state.map(e => e.id === updatedEvent.id ? updatedEvent : e));
     };
 
     // --- Financial Projections (Bucket System) ---
@@ -363,459 +445,447 @@ const Dashboard = () => {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex font-sans text-slate-900 dark:text-white">
-            {/* Sidebar */}
-            <aside className="w-20 lg:w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col fixed h-full z-20 transition-all duration-300">
-                <div className="p-6 flex items-center justify-center lg:justify-start gap-3">
-                    <div className="w-8 h-8 bg-slate-900 dark:bg-indigo-500 rounded-xl flex items-center justify-center text-white font-bold text-lg">K</div>
-                    <span className="font-bold text-xl hidden lg:block dark:text-white">Klaro</span>
-                </div>
-
-                <nav className="flex-1 px-4 space-y-2 mt-6">
-                    <button onClick={() => setActiveTab('overview')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'overview' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}>
-                        <LayoutDashboard size={20} />
-                        <span className="font-medium hidden lg:block">{t('overview')}</span>
-                    </button>
-                    <button onClick={() => setActiveTab('budget')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'budget' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}>
-                        <PieChart size={20} />
-                        <span className="font-medium hidden lg:block">{t('budget')}</span>
-                    </button>
-                    <button onClick={() => setActiveTab('planning')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'planning' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}>
-                        <Calendar size={20} />
-                        <span className="font-medium hidden lg:block">{t('planning')}</span>
-                    </button>
-                    <button onClick={() => setActiveTab('invest')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'invest' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}>
-                        <Target size={20} />
-                        <span className="font-medium hidden lg:block">{t('investment_plan')}</span>
-                    </button>
-                    <button onClick={() => setActiveTab('assets')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'assets' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}>
-                        <Wallet size={20} />
-                        <span className="font-medium hidden lg:block">{t('assets')}</span>
-                    </button>
-                    <button onClick={() => setActiveTab('debts')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'debts' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}>
-                        <CreditCard size={20} />
-                        <span className="font-medium hidden lg:block">{t('debts')}</span>
-                    </button>
-                </nav>
-
-
-            </aside>
-
-            {/* Main Content */}
-            <main className="flex-1 ml-20 lg:ml-64 p-8 transition-all duration-300 relative">
-                {/* Header with Save Status - Overlay */}
-                <div className="absolute top-4 right-8 z-10 pointer-events-none">
-                    <div className={`flex items-center gap-2 text-sm font-medium transition-opacity duration-500 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm border border-slate-100 dark:border-slate-700 ${saveStatus === 'idle' ? 'opacity-0' : 'opacity-100'}`}>
-                        {saveStatus === 'saving' && <span className="text-slate-400 flex items-center gap-1"><Save size={14} className="animate-pulse" /> {t('saving')}</span>}
-                        {saveStatus === 'saved' && <span className="text-emerald-500 flex items-center gap-1"><CheckCircle size={14} /> {t('saved')}</span>}
-                        {saveStatus === 'error' && <span className="text-rose-500 flex items-center gap-1"><AlertCircle size={14} /> {t('save_failed')}</span>}
-
+        <ErrorBoundary>
+            <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex font-sans text-slate-900 dark:text-white">
+                {/* Sidebar */}
+                <aside className="w-20 lg:w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col fixed h-full z-20 transition-all duration-300">
+                    <div className="p-6 flex items-center justify-center lg:justify-start gap-3">
+                        <div className="w-8 h-8 bg-slate-900 dark:bg-indigo-500 rounded-xl flex items-center justify-center text-white font-bold text-lg">K</div>
+                        <span className="font-bold text-xl hidden lg:block dark:text-white">Klaro</span>
                     </div>
-                </div>
 
-                {activeTab === 'overview' && (
-                    <div className="animate-reveal space-y-8">
-                        <header className="flex justify-between items-end">
+                    <nav className="flex-1 px-4 space-y-2 mt-6">
+                        <button onClick={() => setActiveTab('overview')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'overview' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}>
+                            <LayoutDashboard size={20} />
+                            <span className="font-medium hidden lg:block">{t('overview')}</span>
+                        </button>
+                        <button onClick={() => setActiveTab('budget')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'budget' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}>
+                            <PieChart size={20} />
+                            <span className="font-medium hidden lg:block">{t('budget')}</span>
+                        </button>
+                        <button onClick={() => setActiveTab('planning')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'planning' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}>
+                            <Calendar size={20} />
+                            <span className="font-medium hidden lg:block">{t('planning')}</span>
+                        </button>
+                        <button onClick={() => setActiveTab('invest')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'invest' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}>
+                            <Target size={20} />
+                            <span className="font-medium hidden lg:block">{t('investment_plan')}</span>
+                        </button>
+                        <button onClick={() => setActiveTab('assets')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'assets' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}>
+                            <Wallet size={20} />
+                            <span className="font-medium hidden lg:block">{t('assets')}</span>
+                        </button>
+                        <button onClick={() => setActiveTab('debts')} className={`w-full p-3 rounded-xl flex items-center justify-center lg:justify-start gap-3 transition-all ${activeTab === 'debts' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}>
+                            <CreditCard size={20} />
+                            <span className="font-medium hidden lg:block">{t('debts')}</span>
+                        </button>
+                    </nav>
+
+
+                </aside>
+
+                {/* Main Content */}
+                <main className="flex-1 ml-20 lg:ml-64 p-8 transition-all duration-300 relative">
+                    {/* Header with Save Status - Overlay */}
+                    <div className="absolute top-4 right-8 z-10 pointer-events-none">
+                        <div className={`flex items-center gap-2 text-sm font-medium transition-opacity duration-500 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm border border-slate-100 dark:border-slate-700 ${saveStatus === 'idle' ? 'opacity-0' : 'opacity-100'}`}>
+                            {saveStatus === 'saving' && <span className="text-slate-400 flex items-center gap-1"><Save size={14} className="animate-pulse" /> {t('saving')}</span>}
+                            {saveStatus === 'saved' && <span className="text-emerald-500 flex items-center gap-1"><CheckCircle size={14} /> {t('saved')}</span>}
+                            {saveStatus === 'error' && <span className="text-rose-500 flex items-center gap-1"><AlertCircle size={14} /> {t('save_failed')}</span>}
+
+                        </div>
+                    </div>
+
+                    {activeTab === 'overview' && (
+                        <div className="animate-reveal space-y-8">
+                            <header className="flex justify-between items-end">
+                                <div>
+                                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{t('financial_overview')}</h1>
+                                    <p className="text-slate-500 dark:text-slate-400 mt-1">{t('financial_overview_desc')}</p>
+                                </div>
+                            </header>
+
+                            {/* Summary Cards */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <div className="bg-slate-900 dark:bg-indigo-600 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden animate-pop">
+                                    <p className="text-slate-400 dark:text-indigo-200 text-sm font-medium mb-2">{t('net_worth')}</p>
+                                    <h3 className="text-3xl font-bold">{Math.round(projection.stats.netWorth).toLocaleString()}€</h3>
+                                    <div className="absolute right-0 bottom-0 opacity-10 transform translate-y-1/4 translate-x-1/4">
+                                        <TrendingUp size={100} />
+                                    </div>
+                                </div>
+                                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm animate-pop delay-100">
+                                    <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-2">{t('total_assets')}</p>
+                                    <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{Math.round(projection.stats.totalAssets).toLocaleString()}€</h3>
+                                </div>
+                                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm animate-pop delay-200">
+                                    <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-2">{t('total_debt')}</p>
+                                    <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{Math.round(projection.stats.totalDebt).toLocaleString()}€</h3>
+                                </div>
+                                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm animate-pop delay-300">
+                                    <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-2">{t('savings_rate')}</p>
+                                    <h3 className={`text-2xl font-bold ${projection.stats.monthlySurplus >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                        {Math.round(projection.stats.monthlySurplus > 0 && projection.stats.netWorth !== 0 ? (projection.stats.monthlySurplus / ((data.budget?.incomeCategories || []).reduce((sum, c) => sum + (Number(data.budget?.values?.[c.id]) || 0), 0) || 1)) * 100 : 0)}%
+                                    </h3>
+                                </div>
+                            </div>
+
+                            {/* Final Projection Breakdown Section */}
                             <div>
-                                <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{t('financial_overview')}</h1>
-                                <p className="text-slate-500 dark:text-slate-400 mt-1">{t('financial_overview_desc')}</p>
-                            </div>
-                        </header>
-
-                        {/* Summary Cards */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                            <div className="bg-slate-900 dark:bg-indigo-600 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden animate-pop">
-                                <p className="text-slate-400 dark:text-indigo-200 text-sm font-medium mb-2">{t('net_worth')}</p>
-                                <h3 className="text-3xl font-bold">{Math.round(projection.stats.netWorth).toLocaleString()}€</h3>
-                                <div className="absolute right-0 bottom-0 opacity-10 transform translate-y-1/4 translate-x-1/4">
-                                    <TrendingUp size={100} />
-                                </div>
-                            </div>
-                            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm animate-pop delay-100">
-                                <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-2">{t('total_assets')}</p>
-                                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{Math.round(projection.stats.totalAssets).toLocaleString()}€</h3>
-                            </div>
-                            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm animate-pop delay-200">
-                                <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-2">{t('total_debt')}</p>
-                                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{Math.round(projection.stats.totalDebt).toLocaleString()}€</h3>
-                            </div>
-                            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm animate-pop delay-300">
-                                <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-2">{t('savings_rate')}</p>
-                                <h3 className={`text-2xl font-bold ${projection.stats.monthlySurplus >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                    {Math.round(projection.stats.monthlySurplus > 0 && projection.stats.netWorth !== 0 ? (projection.stats.monthlySurplus / ((data.budget?.incomeCategories || []).reduce((sum, c) => sum + (Number(data.budget?.values?.[c.id]) || 0), 0) || 1)) * 100 : 0)}%
-                                </h3>
-                            </div>
-                        </div>
-
-                        {/* Final Projection Breakdown Section */}
-                        <div>
-                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">{t('future_portfolio_composition')}</h3>
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                                {/* Future Net Worth Card - NEW */}
-                                <div className="bg-slate-900 dark:bg-indigo-600 text-white p-4 rounded-2xl shadow-lg flex flex-col justify-between transform scale-[1.02] ring-2 ring-emerald-500/50">
-                                    <div>
-                                        <p className="text-xs font-bold text-slate-400 dark:text-indigo-200 uppercase mb-1">{t('future_net_worth')}</p>
-                                        <p className="text-lg font-bold">{Math.round(projection.stats.finalBuckets?.NetWorth || 0).toLocaleString()}€</p>
-                                    </div>
-                                    <div className="flex items-center gap-1 mt-2 text-xs">
-                                        <span className="font-bold text-emerald-400">
-                                            +{Math.round((projection.stats.finalBuckets?.NetWorth || 0) - (projection.stats.netWorth || 0)).toLocaleString()}€
-                                        </span>
-                                        <span className="text-slate-400 dark:text-indigo-300">{t('in_months', { count: projectionMonths })}</span>
-                                    </div>
-                                </div>
-
-                                {['stock', 'crypto', 'metal', 'cash'].map(type => {
-                                    const finalVal = projection.stats.finalBuckets?.[type] || 0;
-                                    const initialVal = (data.assets || []).filter(a => a.type === type).reduce((sum, a) => sum + (Number(a.value) || 0), 0);
-                                    const growth = finalVal - initialVal;
-
-                                    return (
-                                        <div key={type} className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
-                                            <div>
-                                                <p className="text-xs font-bold text-slate-400 uppercase mb-1">{t(`asset_${type}`)}</p>
-                                                <p className="text-lg font-bold text-slate-900 dark:text-white">{finalVal.toLocaleString()}€</p>
-                                            </div>
-                                            <div className="flex items-center gap-1 mt-2 text-xs">
-                                                <span className={cn("font-bold", growth >= 0 ? "text-emerald-500" : "text-rose-500")}>
-                                                    {growth >= 0 ? '+' : ''}{growth.toLocaleString()}€
-                                                </span>
-                                                <span className="text-slate-400">{t('in_months', { count: projectionMonths })}</span>
-                                            </div>
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">{t('future_portfolio_composition')}</h3>
+                                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                                    {/* Future Net Worth Card - NEW */}
+                                    <div className="bg-slate-900 dark:bg-indigo-600 text-white p-4 rounded-2xl shadow-lg flex flex-col justify-between transform scale-[1.02] ring-2 ring-emerald-500/50">
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-400 dark:text-indigo-200 uppercase mb-1">{t('future_net_worth')}</p>
+                                            <p className="text-lg font-bold">{Math.round(projection.stats.finalBuckets?.NetWorth || 0).toLocaleString()}€</p>
                                         </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
+                                        <div className="flex items-center gap-1 mt-2 text-xs">
+                                            <span className="font-bold text-emerald-400">
+                                                +{Math.round((projection.stats.finalBuckets?.NetWorth || 0) - (projection.stats.netWorth || 0)).toLocaleString()}€
+                                            </span>
+                                            <span className="text-slate-400 dark:text-indigo-300">{t('in_months', { count: projectionMonths })}</span>
+                                        </div>
+                                    </div>
 
-                        {/* Projection Chart */}
-                        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm relative z-0 animate-fade delay-300">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 relative z-30">
-                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('wealth_projection')}</h3>
+                                    {['stock', 'crypto', 'metal', 'cash'].map(type => {
+                                        const finalVal = projection.stats.finalBuckets?.[type] || 0;
+                                        const initialVal = (data.assets || []).filter(a => a.type === type).reduce((sum, a) => sum + (Number(a.value) || 0), 0);
+                                        const growth = finalVal - initialVal;
 
-                                <div className="flex bg-white dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 items-center gap-4 shadow-sm">
-                                    <div className="relative" ref={yieldPopupRef}>
-                                        <button
-                                            onClick={() => setShowYields(!showYields)}
-                                            className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors"
-                                        >
-                                            <TrendingUp size={14} className="text-emerald-500" />
-                                            {t('config_yields')}
-                                        </button>
-
-                                        {showYields && (
-                                            <div className="absolute top-12 right-0 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 w-64 z-50 animate-in zoom-in-95 duration-200">
-                                                <div className="flex justify-between items-center mb-3">
-                                                    <h4 className="font-bold text-sm">{t('annual_yield')} (%)</h4>
-                                                    <button onClick={() => setShowYields(false)}><X size={14} /></button>
+                                        return (
+                                            <div key={type} className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-400 uppercase mb-1">{t(`asset_${type}`)}</p>
+                                                    <p className="text-lg font-bold text-slate-900 dark:text-white">{finalVal.toLocaleString()}€</p>
                                                 </div>
-                                                <div className="space-y-3">
-                                                    {['stock', 'crypto', 'real_estate', 'metal', 'cash'].map(type => (
-                                                        <div key={type}>
-                                                            <div className="flex justify-between text-xs mb-1 text-slate-500 dark:text-slate-400">
-                                                                <span className="capitalize">{t(`asset_${type}`)}</span>
-                                                                <span className="font-bold">{data.assetYields?.[type] || 0}%</span>
+                                                <div className="flex items-center gap-1 mt-2 text-xs">
+                                                    <span className={cn("font-bold", growth >= 0 ? "text-emerald-500" : "text-rose-500")}>
+                                                        {growth >= 0 ? '+' : ''}{growth.toLocaleString()}€
+                                                    </span>
+                                                    <span className="text-slate-400">{t('in_months', { count: projectionMonths })}</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Projection Chart */}
+                            <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm relative z-0 animate-fade delay-300">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 relative z-30">
+                                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('wealth_projection')}</h3>
+
+                                    <div className="flex bg-white dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 items-center gap-4 shadow-sm">
+                                        <div className="relative" ref={yieldPopupRef}>
+                                            <button
+                                                onClick={() => setShowYields(!showYields)}
+                                                className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors"
+                                            >
+                                                <TrendingUp size={14} className="text-emerald-500" />
+                                                {t('config_yields')}
+                                            </button>
+
+                                            {showYields && (
+                                                <div className="absolute top-12 right-0 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 w-64 z-50 animate-in zoom-in-95 duration-200">
+                                                    <div className="flex justify-between items-center mb-3">
+                                                        <h4 className="font-bold text-sm">{t('annual_yield')} (%)</h4>
+                                                        <button onClick={() => setShowYields(false)}><X size={14} /></button>
+                                                    </div>
+                                                    <div className="space-y-3">
+                                                        {['stock', 'crypto', 'real_estate', 'metal', 'cash'].map(type => (
+                                                            <div key={type}>
+                                                                <div className="flex justify-between text-xs mb-1 text-slate-500 dark:text-slate-400">
+                                                                    <span className="capitalize">{t(`asset_${type}`)}</span>
+                                                                    <span className="font-bold">{data.assetYields?.[type] || 0}%</span>
+                                                                </div>
+                                                                <input
+                                                                    type="range" min="0" max="20" step="0.5"
+                                                                    value={data.assetYields?.[type] || 0}
+                                                                    onChange={(e) => settingsH.set({
+                                                                        ...settingsH.state,
+                                                                        assetYields: {
+                                                                            ...settingsH.state.assetYields,
+                                                                            [type]: Number(e.target.value)
+                                                                        }
+                                                                    })}
+                                                                    className={cn("w-full h-1.5 rounded-lg appearance-none cursor-pointer bg-slate-200 dark:bg-slate-700",
+                                                                        type === 'stock' ? 'accent-blue-500' :
+                                                                            type === 'crypto' ? 'accent-violet-500' :
+                                                                                type === 'cash' ? 'accent-emerald-500' :
+                                                                                    'accent-slate-500'
+                                                                    )}
+                                                                />
                                                             </div>
-                                                            <input
-                                                                type="range" min="0" max="20" step="0.5"
-                                                                value={data.assetYields?.[type] || 0}
-                                                                onChange={(e) => setData({
-                                                                    ...data,
-                                                                    assetYields: {
-                                                                        ...data.assetYields,
-                                                                        [type]: Number(e.target.value)
-                                                                    }
-                                                                })}
-                                                                className={cn("w-full h-1.5 rounded-lg appearance-none cursor-pointer bg-slate-200 dark:bg-slate-700",
-                                                                    type === 'stock' ? 'accent-blue-500' :
-                                                                        type === 'crypto' ? 'accent-violet-500' :
-                                                                            type === 'cash' ? 'accent-emerald-500' :
-                                                                                'accent-slate-500'
-                                                                )}
-                                                            />
-                                                        </div>
-                                                    ))}
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="h-5 w-px bg-slate-200 dark:bg-slate-700" />
-
-                                    <div className="flex items-center gap-3 pr-2">
-                                        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 rounded-lg px-2 py-1 border border-slate-100 dark:border-slate-800">
-                                            <input
-                                                type="number" min="0" max="50"
-                                                value={duration.years}
-                                                onChange={(e) => setDuration(prev => ({ ...prev, years: Math.max(0, parseInt(e.target.value) || 0) }))}
-                                                className="w-8 bg-transparent text-center text-sm font-bold outline-none text-slate-900 dark:text-white"
-                                            />
-                                            <span className="text-[10px] uppercase font-bold text-slate-400">{t('years')}</span>
+                                            )}
                                         </div>
-                                        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 rounded-lg px-2 py-1 border border-slate-100 dark:border-slate-800">
-                                            <input
-                                                type="number" min="0" max="11"
-                                                value={duration.months}
-                                                onChange={(e) => setDuration(prev => ({ ...prev, months: Math.max(0, parseInt(e.target.value) || 0) }))}
-                                                className="w-8 bg-transparent text-center text-sm font-bold outline-none text-slate-900 dark:text-white"
-                                            />
-                                            <span className="text-[10px] uppercase font-bold text-slate-400">{t('months')}</span>
+
+                                        <div className="h-5 w-px bg-slate-200 dark:bg-slate-700" />
+
+                                        <div className="flex items-center gap-3 pr-2">
+                                            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 rounded-lg px-2 py-1 border border-slate-100 dark:border-slate-800">
+                                                <input
+                                                    type="number" min="0" max="50"
+                                                    value={duration.years}
+                                                    onChange={(e) => setDuration(prev => ({ ...prev, years: Math.max(0, parseInt(e.target.value) || 0) }))}
+                                                    className="w-8 bg-transparent text-center text-sm font-bold outline-none text-slate-900 dark:text-white"
+                                                />
+                                                <span className="text-[10px] uppercase font-bold text-slate-400">{t('years')}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 rounded-lg px-2 py-1 border border-slate-100 dark:border-slate-800">
+                                                <input
+                                                    type="number" min="0" max="11"
+                                                    value={duration.months}
+                                                    onChange={(e) => setDuration(prev => ({ ...prev, months: Math.max(0, parseInt(e.target.value) || 0) }))}
+                                                    className="w-8 bg-transparent text-center text-sm font-bold outline-none text-slate-900 dark:text-white"
+                                                />
+                                                <span className="text-[10px] uppercase font-bold text-slate-400">{t('months')}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div className="h-[300px] w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={projection.data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                                        <defs>
-                                            <linearGradient id="splitColor" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset={off} stopColor={off <= 0 ? "#f43f5e" : "#10b981"} stopOpacity={1} />
-                                                <stop offset={off} stopColor={off >= 1 ? "#10b981" : "#f43f5e"} stopOpacity={1} />
-                                            </linearGradient>
-                                            <linearGradient id="splitColorFill" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset={off} stopColor={off <= 0 ? "#f43f5e" : "#10b981"} stopOpacity={0.3} />
-                                                <stop offset={off} stopColor={off >= 1 ? "#10b981" : "#f43f5e"} stopOpacity={0.3} />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#334155' : '#f1f5f9'} />
-                                        <XAxis
-                                            dataKey="name"
-                                            axisLine={false}
-                                            tickLine={false}
-                                            tick={{ fill: theme === 'dark' ? '#94a3b8' : '#64748b', fontSize: 12 }}
-                                            dy={10}
-                                            minTickGap={50}
-                                        />
-                                        <YAxis
-                                            axisLine={false}
-                                            tickLine={false}
-                                            tick={{ fill: theme === 'dark' ? '#94a3b8' : '#64748b', fontSize: 12 }}
-                                            tickFormatter={(value) => `${value / 1000}k`}
-                                        />
-                                        <Tooltip
-                                            content={({ active, payload, label }) => {
-                                                if (active && payload && payload.length) {
-                                                    const data = payload[0].payload;
-                                                    return (
-                                                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700">
-                                                            <p className="font-bold text-slate-900 dark:text-white mb-2">{label}</p>
-                                                            <div className="space-y-1 text-xs">
-                                                                <div className="flex justify-between gap-4">
-                                                                    <span className="text-slate-500">{t('net_worth')}</span>
-                                                                    <span className={cn("font-bold", data.NetWorth >= 0 ? "text-emerald-500" : "text-rose-500")}>
-                                                                        {data.NetWorth.toLocaleString()}€
-                                                                    </span>
-                                                                </div>
-                                                                <div className="flex justify-between gap-4">
-                                                                    <span className="text-slate-500">{t('total_assets')}</span>
-                                                                    <span className="font-bold text-slate-700 dark:text-slate-300">
-                                                                        {data.Assets.toLocaleString()}€
-                                                                    </span>
-                                                                </div>
-                                                                <div className="flex justify-between gap-4">
-                                                                    <span className="text-slate-500">{t('latent_gain')}</span>
-                                                                    <span className="font-bold text-emerald-500">
-                                                                        +{data.UnrealizedGain?.toLocaleString()}€
-                                                                    </span>
-                                                                </div>
-                                                                <div className="h-px bg-slate-100 dark:bg-slate-700 my-2" />
-                                                                {['stock', 'crypto', 'real_estate', 'metal', 'cash'].map(k => (
-                                                                    <div key={k} className="flex justify-between gap-4">
-                                                                        <span className="text-slate-400 capitalize">{t(`asset_${k}`)}</span>
-                                                                        <span className="font-mono text-slate-600 dark:text-slate-400">
-                                                                            {(data[k] || 0).toLocaleString()}€
+                                <div className="h-[300px] w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <AreaChart data={projection.data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                            <defs>
+                                                <linearGradient id="splitColor" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset={off} stopColor={off <= 0 ? "#f43f5e" : "#10b981"} stopOpacity={1} />
+                                                    <stop offset={off} stopColor={off >= 1 ? "#10b981" : "#f43f5e"} stopOpacity={1} />
+                                                </linearGradient>
+                                                <linearGradient id="splitColorFill" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset={off} stopColor={off <= 0 ? "#f43f5e" : "#10b981"} stopOpacity={0.3} />
+                                                    <stop offset={off} stopColor={off >= 1 ? "#10b981" : "#f43f5e"} stopOpacity={0.3} />
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#334155' : '#f1f5f9'} />
+                                            <XAxis
+                                                dataKey="name"
+                                                axisLine={false}
+                                                tickLine={false}
+                                                tick={{ fill: theme === 'dark' ? '#94a3b8' : '#64748b', fontSize: 12 }}
+                                                dy={10}
+                                                minTickGap={50}
+                                            />
+                                            <YAxis
+                                                axisLine={false}
+                                                tickLine={false}
+                                                tick={{ fill: theme === 'dark' ? '#94a3b8' : '#64748b', fontSize: 12 }}
+                                                tickFormatter={(value) => `${value / 1000}k`}
+                                            />
+                                            <Tooltip
+                                                content={({ active, payload, label }) => {
+                                                    if (active && payload && payload.length) {
+                                                        const data = payload[0].payload;
+                                                        return (
+                                                            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700">
+                                                                <p className="font-bold text-slate-900 dark:text-white mb-2">{label}</p>
+                                                                <div className="space-y-1 text-xs">
+                                                                    <div className="flex justify-between gap-4">
+                                                                        <span className="text-slate-500">{t('net_worth')}</span>
+                                                                        <span className={cn("font-bold", data.NetWorth >= 0 ? "text-emerald-500" : "text-rose-500")}>
+                                                                            {data.NetWorth.toLocaleString()}€
                                                                         </span>
                                                                     </div>
-                                                                ))}
+                                                                    <div className="flex justify-between gap-4">
+                                                                        <span className="text-slate-500">{t('total_assets')}</span>
+                                                                        <span className="font-bold text-slate-700 dark:text-slate-300">
+                                                                            {data.Assets.toLocaleString()}€
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between gap-4">
+                                                                        <span className="text-slate-500">{t('latent_gain')}</span>
+                                                                        <span className="font-bold text-emerald-500">
+                                                                            +{data.UnrealizedGain?.toLocaleString()}€
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="h-px bg-slate-100 dark:bg-slate-700 my-2" />
+                                                                    {['stock', 'crypto', 'real_estate', 'metal', 'cash'].map(k => (
+                                                                        <div key={k} className="flex justify-between gap-4">
+                                                                            <span className="text-slate-400 capitalize">{t(`asset_${k}`)}</span>
+                                                                            <span className="font-mono text-slate-600 dark:text-slate-400">
+                                                                                {(data[k] || 0).toLocaleString()}€
+                                                                            </span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    );
-                                                }
-                                                return null;
-                                            }}
-                                        />
-                                        <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="3 3" />
-                                        <Area
-                                            type="monotone"
-                                            dataKey="NetWorth"
-                                            stroke="url(#splitColor)"
-                                            strokeWidth={3}
-                                            fill="url(#splitColorFill)"
-                                            animationDuration={300}
-                                            animationEasing="ease-in-out"
-                                        />
-                                    </AreaChart>
-                                </ResponsiveContainer>
+                                                        );
+                                                    }
+                                                    return null;
+                                                }}
+                                            />
+                                            <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="3 3" />
+                                            <Area
+                                                type="monotone"
+                                                dataKey="NetWorth"
+                                                stroke="url(#splitColor)"
+                                                strokeWidth={3}
+                                                fill="url(#splitColorFill)"
+                                                animationDuration={300}
+                                                animationEasing="ease-in-out"
+                                            />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {activeTab === 'planning' && (
-                    <div className="animate-reveal">
-                        <EventManager
-                            events={data.events || []}
-                            onAddEvent={handleAddEvent}
-                            onRemoveEvent={handleRemoveEvent}
-                            onUpdateEvent={handleUpdateEvent}
-                        />
-                    </div>
-                )}
+                    {activeTab === 'planning' && (
+                        <div className="animate-reveal">
+                            <EventManager
+                                events={data.events || []}
+                                onAddEvent={handleAddEvent}
+                                onRemoveEvent={handleRemoveEvent}
+                                onUpdateEvent={handleUpdateEvent}
+                            />
+                        </div>
+                    )}
 
-                {activeTab === 'invest' && (
-                    <InvestmentPlan
-                        assets={data.assets}
-                        investmentGoal={data.investmentGoal || 0}
-                        targets={data.investmentTargets || { stock: 50, crypto: 30, metal: 10, cash: 10 }}
-                        strategy={data.investmentStrategy || 'smart'}
-                        onUpdateGoal={(val) => setData({ ...data, investmentGoal: val })}
-                        onUpdateTargets={(val) => setData({ ...data, investmentTargets: val })}
-                        onUpdateStrategy={(val) => setData({ ...data, investmentStrategy: val })}
-                    />
-                )}
-
-                {activeTab === 'assets' && (
-                    <AssetManager
-                        assets={data.assets}
-                        onAddAsset={(asset) => updateAssets([...data.assets, asset])}
-                        onRemoveAsset={(id) => updateAssets(data.assets.filter(a => a.id !== id))}
-                        onUpdateAsset={(id, updated) => updateAssets(data.assets.map(a => a.id === id ? updated : a))}
-                    />
-                )}
-
-                {activeTab === 'budget' && (
-                    <div className="animate-reveal">
-                        <Budget
-                            values={data.budget?.values || {}}
-                            incomeCategories={data.budget?.incomeCategories || []}
-                            expenseCategories={data.budget?.expenseCategories || []}
-                            debts={data.debts || []}
+                    {activeTab === 'invest' && (
+                        <InvestmentPlan
+                            assets={data.assets}
                             investmentGoal={data.investmentGoal || 0}
-                            onValueChange={(id, value) => {
-                                setData({
-                                    ...data,
-                                    budget: {
-                                        ...data.budget,
-                                        values: { ...data.budget.values, [id]: Number(value) }
-                                    }
-                                });
-                            }}
-                            onAddCategory={(type, name, icon) => {
-                                const newCat = { id: `${type.substring(0, 3)}_${Date.now()}`, name, icon: icon || 'MoreHorizontal' };
-                                setData({
-                                    ...data,
-                                    budget: {
-                                        ...data.budget,
-                                        [type === 'income' ? 'incomeCategories' : 'expenseCategories']: [
-                                            ...(data.budget[type === 'income' ? 'incomeCategories' : 'expenseCategories'] || []),
-                                            newCat
-                                        ]
-                                    }
-                                });
-                            }}
-                            onUpdateCategory={(type, id, updates) => {
-                                const key = type === 'income' ? 'incomeCategories' : 'expenseCategories';
-                                setData({
-                                    ...data,
-                                    budget: {
-                                        ...data.budget,
-                                        [key]: data.budget[key].map(c => c.id === id ? { ...c, ...updates } : c)
-                                    }
-                                });
-                            }}
-                            onRemoveCategory={(type, id) => {
-                                const key = type === 'income' ? 'incomeCategories' : 'expenseCategories';
-                                setData({
-                                    ...data,
-                                    budget: {
-                                        ...data.budget,
-                                        [key]: data.budget[key].filter(c => c.id !== id)
-                                    }
-                                });
-                            }}
-                            onReorderCategoryList={(type, newList) => {
-                                const key = type === 'income' ? 'incomeCategories' : 'expenseCategories';
-                                setData({
-                                    ...data,
-                                    budget: {
-                                        ...data.budget,
+                            targets={data.investmentTargets || { stock: 50, crypto: 30, metal: 10, cash: 10 }}
+                            strategy={data.investmentStrategy || 'smart'}
+                            onUpdateGoal={(val) => investH.set({ ...investH.state, goal: val })}
+                            onUpdateTargets={(val) => investH.set({ ...investH.state, targets: val })}
+                            onUpdateStrategy={(val) => investH.set({ ...investH.state, strategy: val })}
+                        />
+                    )}
+
+                    {activeTab === 'assets' && (
+                        <AssetManager
+                            assets={data.assets}
+                            onAddAsset={(asset) => updateAssets([...data.assets, asset])}
+                            onRemoveAsset={(id) => updateAssets(data.assets.filter(a => a.id !== id))}
+                            onUpdateAsset={(id, updated) => updateAssets(data.assets.map(a => a.id === id ? updated : a))}
+                        />
+                    )}
+
+                    {activeTab === 'budget' && (
+                        <div className="animate-reveal">
+                            <Budget
+                                values={data.budget?.values || {}}
+                                incomeCategories={data.budget?.incomeCategories || []}
+                                expenseCategories={data.budget?.expenseCategories || []}
+                                debts={data.debts || []}
+                                investmentGoal={data.investmentGoal || 0}
+                                onValueChange={(id, value) => {
+                                    budgetH.set({
+                                        ...budgetH.state,
+                                        values: {
+                                            ...budgetH.state.values,
+                                            [id]: Number(value)
+                                        }
+                                    });
+                                }}
+                                onAddCategory={(type, name, icon) => {
+                                    const newCat = { id: `${type.substring(0, 3)}_${Date.now()}`, name, icon: icon || 'MoreHorizontal' };
+                                    const listKey = type === 'income' ? 'incomeCategories' : 'expenseCategories';
+                                    budgetH.set({
+                                        ...budgetH.state,
+                                        [listKey]: [...budgetH.state[listKey], newCat]
+                                    });
+                                }}
+                                onUpdateCategory={(type, id, updates) => {
+                                    const key = type === 'income' ? 'incomeCategories' : 'expenseCategories';
+                                    budgetH.set({
+                                        ...budgetH.state,
+                                        [key]: budgetH.state[key].map(c => c.id === id ? { ...c, ...updates } : c)
+                                    });
+                                }}
+                                onRemoveCategory={(type, id) => {
+                                    const key = type === 'income' ? 'incomeCategories' : 'expenseCategories';
+                                    budgetH.set({
+                                        ...budgetH.state,
+                                        [key]: budgetH.state[key].filter(c => c.id !== id)
+                                    });
+                                }}
+                                onReorderCategoryList={(type, newList) => {
+                                    const key = type === 'income' ? 'incomeCategories' : 'expenseCategories';
+                                    budgetH.set({
+                                        ...budgetH.state,
                                         [key]: newList
-                                    }
-                                });
-                            }}
-                        />
-                    </div>
+                                    });
+                                }}
+                            />
+                        </div>
+                    )}
+
+                    {activeTab === 'debts' && (
+                        <div className="animate-reveal">
+                            <DebtManager
+                                debts={data.debts || []}
+                                onAddDebt={(debt) => debtsH.set([...debtsH.state, debt])}
+                                onRemoveDebt={(id) => debtsH.set(debtsH.state.filter(d => d.id !== id))}
+                                onUpdateDebt={(id, updates) => debtsH.set(debtsH.state.map(d => d.id === id ? { ...d, ...updates } : d))}
+                            />
+                        </div>
+                    )}
+                </main>
+
+
+                {/* Floating Settings Button - Portalled to body to avoid transform stacking context issues */}
+                {createPortal(
+                    <button
+                        onClick={() => setShowSettings(true)}
+                        className="fixed bottom-6 left-6 z-50 p-4 bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20 rounded-full hover:scale-110 transition-all duration-300 animate-pop"
+                        title={t('settings')}
+                    >
+                        <Settings size={24} />
+                    </button>,
+                    document.body
                 )}
 
-                {activeTab === 'debts' && (
-                    <div className="animate-reveal">
-                        <DebtManager
-                            debts={data.debts || []}
-                            onAddDebt={(debt) => setData({ ...data, debts: [...data.debts, debt] })}
-                            onRemoveDebt={(id) => setData({ ...data, debts: data.debts.filter(d => d.id !== id) })}
-                            onUpdateDebt={(id, updates) => setData({ ...data, debts: data.debts.map(d => d.id === id ? { ...d, ...updates } : d) })}
-                        />
-                    </div>
+                {/* Settings Modal */}
+                {showSettings && createPortal(
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade">
+                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-md p-6 m-4 animate-pop">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">{t('settings')}</h3>
+                                <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"><X size={24} /></button>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-100 dark:border-slate-600 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-bold text-slate-900 dark:text-white">{t('theme')}</span>
+                                        <ThemeToggle />
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-bold text-slate-900 dark:text-white">{t('language')}</span>
+                                        <LanguageSwitcher />
+                                    </div>
+                                </div>
+                                <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-100 dark:border-slate-600">
+                                    <h4 className="font-bold text-slate-900 dark:text-white mb-2">{t('data_management')}</h4>
+                                    <p className="text-sm text-slate-500 dark:text-slate-300 mb-4">{t('data_management_desc')}</p>
+
+                                    <div className="flex gap-3">
+                                        <button onClick={handleExport} className="flex-1 flex items-center justify-center gap-2 py-2 bg-white dark:bg-slate-600 border border-slate-200 dark:border-slate-500 rounded-lg text-slate-700 dark:text-white font-medium hover:bg-slate-50 dark:hover:bg-slate-500 transition-colors">
+                                            <Download size={18} /> {t('export')}
+                                        </button>
+                                        <label className="flex-1 flex items-center justify-center gap-2 py-2 bg-slate-900 dark:bg-indigo-600 text-white rounded-lg font-medium hover:bg-slate-800 dark:hover:bg-indigo-700 transition-colors cursor-pointer">
+                                            <Upload size={18} /> {t('import')}
+                                            <input type="file" accept=".json" onChange={handleImport} className="hidden" />
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div className="text-center">
+                                    <p className="text-xs text-slate-400">Klaro v0.1.0 • Local Storage Only</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>,
+                    document.body
                 )}
-            </main>
-
-
-            {/* Floating Settings Button - Portalled to body to avoid transform stacking context issues */}
-            {createPortal(
-                <button
-                    onClick={() => setShowSettings(true)}
-                    className="fixed bottom-6 left-6 z-50 p-4 bg-slate-900 text-white shadow-lg shadow-slate-900/20 dark:bg-indigo-600 dark:shadow-indigo-900/20 rounded-full hover:scale-110 transition-all duration-300 animate-pop"
-                    title={t('settings')}
-                >
-                    <Settings size={24} />
-                </button>,
-                document.body
-            )}
-
-            {/* Settings Modal */}
-            {showSettings && createPortal(
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade">
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-md p-6 m-4 animate-pop">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-bold text-slate-900 dark:text-white">{t('settings')}</h3>
-                            <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"><X size={24} /></button>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-100 dark:border-slate-600 space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <span className="font-bold text-slate-900 dark:text-white">{t('theme')}</span>
-                                    <ThemeToggle />
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="font-bold text-slate-900 dark:text-white">{t('language')}</span>
-                                    <LanguageSwitcher />
-                                </div>
-                            </div>
-                            <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-100 dark:border-slate-600">
-                                <h4 className="font-bold text-slate-900 dark:text-white mb-2">{t('data_management')}</h4>
-                                <p className="text-sm text-slate-500 dark:text-slate-300 mb-4">{t('data_management_desc')}</p>
-
-                                <div className="flex gap-3">
-                                    <button onClick={handleExport} className="flex-1 flex items-center justify-center gap-2 py-2 bg-white dark:bg-slate-600 border border-slate-200 dark:border-slate-500 rounded-lg text-slate-700 dark:text-white font-medium hover:bg-slate-50 dark:hover:bg-slate-500 transition-colors">
-                                        <Download size={18} /> {t('export')}
-                                    </button>
-                                    <label className="flex-1 flex items-center justify-center gap-2 py-2 bg-slate-900 dark:bg-indigo-600 text-white rounded-lg font-medium hover:bg-slate-800 dark:hover:bg-indigo-700 transition-colors cursor-pointer">
-                                        <Upload size={18} /> {t('import')}
-                                        <input type="file" accept=".json" onChange={handleImport} className="hidden" />
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div className="text-center">
-                                <p className="text-xs text-slate-400">Klaro v0.1.0 • Local Storage Only</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>,
-                document.body
-            )}
-        </div>
+            </div>
+        </ErrorBoundary>
     );
 };
 
