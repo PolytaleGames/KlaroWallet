@@ -1,16 +1,23 @@
 import React, { useState } from 'react';
-import { Mail, Lock, Loader2, LogIn, UserPlus, FolderOpen } from 'lucide-react';
+import { Mail, Lock, Loader2, LogIn, UserPlus, FolderOpen, Eye, EyeOff, Globe } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 
 const LoginPage = () => {
     const { signIn, signUp, loginAsGuest } = useAuth();
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState(''); // New State
+    const [showPassword, setShowPassword] = useState(false); // New State
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+
+    const toggleLanguage = () => {
+        const newLang = i18n.language === 'en' ? 'fr' : 'en';
+        i18n.changeLanguage(newLang);
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -22,9 +29,16 @@ const LoginPage = () => {
                 await signIn(email, password);
                 // Redirect/App state change happens automatically via AuthContext -> App.jsx
             } else {
+                // Validation for Sign Up
+                if (password !== confirmPassword) {
+                    throw new Error("Passwords do not match");
+                }
+                if (password.length < 6) {
+                    throw new Error("Password must be at least 6 characters");
+                }
                 await signUp(email, password);
                 setError('Account created! Please check your email to confirm before logging in.');
-                // Optionally switch to login mode or stay to show message
+                setIsLogin(true); // Switch back to login for UX
             }
         } catch (err) {
             console.error(err);
@@ -40,6 +54,15 @@ const LoginPage = () => {
 
                 {/* Branding Header */}
                 <div className="bg-slate-900 dark:bg-indigo-600 p-8 text-center relative overflow-hidden">
+                    {/* Language Toggle */}
+                    <button
+                        onClick={toggleLanguage}
+                        className="absolute top-4 right-4 z-20 bg-white/10 hover:bg-white/20 text-white p-2 rounded-full backdrop-blur-sm transition-all flex items-center gap-1.5 text-xs font-bold"
+                    >
+                        <Globe size={14} />
+                        {i18n.language?.toUpperCase() || 'EN'}
+                    </button>
+
                     <div className="relative z-10">
                         <div className="w-16 h-16 bg-white rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-black/20">
                             <span className="text-3xl font-bold text-slate-900">K</span>
@@ -84,16 +107,44 @@ const LoginPage = () => {
                             <div className="relative">
                                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                 <input
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     required
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                                    className="w-full pl-10 pr-12 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
                                     placeholder="••••••••"
                                     minLength={6}
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                >
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
                             </div>
                         </div>
+
+                        {!isLogin && (
+                            <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Confirm Password</label>
+                                <div className="relative">
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        required
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                        className={`w-full pl-10 pr-4 py-3 rounded-xl border ${confirmPassword && confirmPassword !== password ? 'border-rose-500 focus:ring-rose-500' : 'border-slate-200 dark:border-slate-700 focus:ring-indigo-500'} bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:border-transparent outline-none transition-all`}
+                                        placeholder="••••••••"
+                                        minLength={6}
+                                    />
+                                </div>
+                                {confirmPassword && confirmPassword !== password && (
+                                    <p className="text-xs text-rose-500 font-medium">Passwords do not match</p>
+                                )}
+                            </div>
+                        )}
 
                         <button
                             type="submit"
