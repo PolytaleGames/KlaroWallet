@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import AuthModal from './AuthModal';
+import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import ThemeToggle from './ThemeToggle';
 import LanguageSwitcher from './LanguageSwitcher';
-import { LayoutDashboard, Wallet, Settings, Upload, Download, Save, CheckCircle, AlertCircle, X, PieChart, CreditCard, TrendingUp, TrendingDown, DollarSign, Calendar, Target } from 'lucide-react';
+import { LayoutDashboard, Wallet, Settings, Upload, Download, Save, CheckCircle, AlertCircle, X, PieChart, CreditCard, TrendingUp, TrendingDown, DollarSign, Calendar, Target, LogIn, LogOut } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { persistenceService } from '../services/persistenceService';
 import { calculateMonthsRemaining, calculatePrincipal } from '../utils/financeUtils';
@@ -55,6 +57,8 @@ class ErrorBoundary extends React.Component {
 
 const Dashboard = () => {
     const { t, i18n } = useTranslation();
+    const { user, signOut } = useAuth();
+    const [showAuthModal, setShowAuthModal] = useState(false);
     const { theme } = useTheme();
     const [activeTab, setActiveTab] = useState('overview');
     const [showSettings, setShowSettings] = useState(false);
@@ -518,7 +522,28 @@ const Dashboard = () => {
                         </button>
                     </nav>
 
-
+                    <div className="p-4 border-t border-slate-200 dark:border-slate-700 mt-auto">
+                        {user ? (
+                            <div className="flex flex-col gap-2">
+                                <div className="px-2 text-xs font-bold text-slate-400 truncate" title={user.email}>{user.email}</div>
+                                <button
+                                    onClick={signOut}
+                                    className="w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all font-medium"
+                                >
+                                    <LogOut size={20} />
+                                    <span className="hidden lg:block">{t('sign_out') || 'Sign Out'}</span>
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => setShowAuthModal(true)}
+                                className="w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-xl bg-slate-900 text-white dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-700 transition-all font-medium shadow-lg shadow-slate-900/20 dark:shadow-indigo-900/20"
+                            >
+                                <LogIn size={20} />
+                                <span className="hidden lg:block">{t('login') || 'Login'}</span>
+                            </button>
+                        )}
+                    </div>
                 </aside>
 
                 {/* Main Content */}
@@ -927,6 +952,8 @@ const Dashboard = () => {
                     )}
                 </main>
 
+
+                <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
 
                 {/* Floating Settings Button - Portalled to body to avoid transform stacking context issues */}
                 {createPortal(

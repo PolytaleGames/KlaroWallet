@@ -1,4 +1,5 @@
 import { load } from '@tauri-apps/plugin-store';
+import { supabase } from '../lib/supabase';
 
 const STORE_FILENAME = 'klaro_db.json';
 const STORAGE_KEY = 'klaro_full_data';
@@ -52,6 +53,25 @@ export const persistenceService = {
     async loadData() {
         let data = null;
 
+        // 0. Try Supabase (Cloud First)
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+                const { data: remoteData } = await supabase
+                    .from('user_data')
+                    .select('content')
+                    .eq('user_id', session.user.id)
+                    .single();
+
+                if (remoteData?.content) {
+                    console.log("Loaded data from Supabase Cloud");
+                    data = remoteData.content;
+                }
+            }
+        } catch (e) {
+            console.warn("Supabase load failed (offline?)", e);
+        }
+
         // 1. Try Tauri Store
         if (await initStore()) {
             try {
@@ -104,6 +124,20 @@ export const persistenceService = {
             ...data,
             lastUpdated: Date.now()
         };
+
+        // 0. Save to Supabase
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+                await supabase.from('user_data').upsert({
+                    user_id: session.user.id,
+                    content: payload,
+                    updated_at: new Date().toISOString()
+                });
+            }
+        } catch (e) {
+            console.warn("Supabase save failed", e);
+        }
 
         // 1. Save to Tauri Store
         if (await initStore()) {
