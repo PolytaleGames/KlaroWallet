@@ -133,7 +133,7 @@ export const persistenceService = {
                     user_id: session.user.id,
                     content: payload,
                     updated_at: new Date().toISOString()
-                });
+                }, { onConflict: 'user_id' });
                 console.log("✅ Data synced to Cloud (Supabase)");
             }
         } catch (e) {
