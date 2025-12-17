@@ -403,10 +403,23 @@ const Dashboard = () => {
 
                     if (structuralSurplus < amountToInvest) {
                         // Even without events, we don't have enough -> BAD
-                        if (savingsUsed !== 'structural') savingsUsed = 'structural';
+                        if (savingsUsed !== 'structural_deficit') {
+                            // Prioritize showing deficit if we truly are in deficit, 
+                            // or if we were already in deficit state don't overwrite it with investment warning
+
+                            if (structuralSurplus < 0) {
+                                savingsUsed = 'structural_deficit';
+                            } else if (savingsUsed !== 'structural_investment') {
+                                // Only set investment warning if we aren't already in deficit mode
+                                // and surplus is positive but less than investment
+                                savingsUsed = 'structural_investment';
+                            }
+                        }
                     } else {
                         // We have enough surplus usually, but events dragged us down -> INFO
-                        if (savingsUsed !== 'structural') savingsUsed = 'event';
+                        if (savingsUsed !== 'structural_deficit' && savingsUsed !== 'structural_investment' && savingsUsed !== 'event') {
+                            savingsUsed = 'event';
+                        }
                     }
                 }
             }
@@ -438,8 +451,9 @@ const Dashboard = () => {
                 monthlySurplus: monthlyIncome - monthlyExpenses - currentDebts.reduce((sum, d) => sum + d.monthlyCost, 0),
                 savingsRate: monthlyIncome > 0 ? ((monthlyIncome - monthlyExpenses - currentDebts.reduce((sum, d) => sum + d.monthlyCost, 0) + investmentGoal) / monthlyIncome) * 100 : 0,
                 finalBuckets,
-                monthlyIncome, // Expose for UI threshold
-                savingsUsed // Expose warning flag (false, 'structural', 'event')
+                monthlyIncome,
+                monthlyExpenses,
+                savingsUsed // Expose warning flag (false, 'structural_deficit', 'structural_investment', 'event')
             }
         };
 
@@ -562,13 +576,15 @@ const Dashboard = () => {
                                     {projection.stats.savingsUsed && (
                                         <div className={cn(
                                             "px-3 py-1 rounded-lg text-xs font-bold border flex items-center gap-2 animate-pulse",
-                                            projection.stats.savingsUsed === 'structural'
+                                            projection.stats.savingsUsed === 'structural_deficit' || projection.stats.savingsUsed === 'structural_investment'
                                                 ? "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-700/50"
                                                 : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-700/50"
                                         )}>
-                                            {projection.stats.savingsUsed === 'structural'
-                                                ? t('savings_used_structural')
-                                                : t('savings_used_event')}
+                                            {projection.stats.savingsUsed === 'structural_deficit'
+                                                ? t('savings_used_deficit')
+                                                : projection.stats.savingsUsed === 'structural_investment'
+                                                    ? t('savings_used_structural')
+                                                    : t('savings_used_event')}
                                         </div>
                                     )}
                                 </div>
@@ -593,8 +609,8 @@ const Dashboard = () => {
                                         const initialVal = (data.assets || []).filter(a => a.type === type).reduce((sum, a) => sum + (Number(a.value) || 0), 0);
                                         const growth = finalVal - initialVal;
 
-                                        // Low Cash Logic
-                                        const isLowCash = type === 'cash' && finalVal < (projection.stats.monthlyIncome || 0);
+                                        // Low Cash Logic: Below 1 month of EXPENSES, not income.
+                                        const isLowCash = type === 'cash' && finalVal < (projection.stats.monthlyExpenses || 0);
 
                                         return (
                                             <div key={type} className={cn(
@@ -607,8 +623,8 @@ const Dashboard = () => {
                                                     <div className="flex justify-between items-start mb-1">
                                                         <p className={cn("text-xs font-bold uppercase", isLowCash ? "text-rose-600 dark:text-rose-400" : "text-slate-400")}>{t(`asset_${type}`)}</p>
                                                         {isLowCash && (
-                                                            <span className="bg-rose-500 text-white text-[10px] uppercase font-bold px-1.5 py-0.5 rounded shadow-sm animate-pulse">
-                                                                {t('low_cash_warning')}
+                                                            <span className="bg-rose-500 text-white text-[10px] uppercase font-bold px-1.5 py-0.5 rounded shadow-sm animate-pulse cursor-help" title={t('low_cash_warning')}>
+                                                                {t('low')}
                                                             </span>
                                                         )}
                                                     </div>
